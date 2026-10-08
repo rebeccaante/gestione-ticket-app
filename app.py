@@ -12,9 +12,9 @@ st.set_page_config(
 # CONFIGURAZIONE CREDENZIALI & PASSWORD HR
 # -----------------------------------------------------------------------------
 SUPABASE_URL = "https://mvdcrqmgjtqtllnexdwb.supabase.co"
-SUPABASE_KEY = "INCOLLA_QUI_LA_TUA_PUBLISHABLE_KEY"
+SUPABASE_KEY = "sb_publishable_BzXfnuLH_bur-gQFf77keQ_RTbUSiOo"
 
-PASSWORD_HR = "HR2025!"
+PASSWORD_HR = "HR2026!"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 

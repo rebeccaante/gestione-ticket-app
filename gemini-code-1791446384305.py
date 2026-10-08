@@ -8,12 +8,15 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# CONFIGURAZIONE CREDENZIALI SUPABASE
+# CONFIGURAZIONE CREDENZIALI & PASSWORD HR
 # -----------------------------------------------------------------------------
 SUPABASE_URL = "https://mvdcrqmgjtqtllnexdwb.supabase.co"
 SUPABASE_KEY = (
-    "sb_publishable_BzXfnuLH_bur-gQFf77keQ_RTbUSiOo"  
+    "sb_publishable_BzXfnuLH_bur-gQFf77keQ_RTbUSiOo"  # 
 )
+
+# 🔑 Imposta qui la password segreta per l'ufficio HR:
+PASSWORD_HR = "HR2026!"
 
 # Inizializzazione client Supabase
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -31,8 +34,24 @@ ruolo = st.sidebar.radio(
     ],
 )
 
+# Funzione di controllo Accesso HR
+def verifica_accesso_hr():
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🔒 Area Riservata HR")
+    pwd_inserita = st.sidebar.text_input(
+        "Inserisci Password HR:", type="password"
+    )
+    if pwd_inserita == PASSWORD_HR:
+        return True
+    elif pwd_inserita != "":
+        st.sidebar.error("❌ Password errata")
+        return False
+    else:
+        st.info("🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.")
+        return False
+
 # -----------------------------------------------------------------------------
-# 1. PORTALE DIPENDENTE: INSERIMENTO RICHIESTA
+# 1. PORTALE DIPENDENTE: INSERIMENTO RICHIESTA (ACCESSO LIBERO)
 # -----------------------------------------------------------------------------
 if ruolo == "Dipendente - Nuova Richiesta":
     st.title("🎟️ Richiesta Ticket Buoni Pasto")
@@ -113,148 +132,150 @@ if ruolo == "Dipendente - Nuova Richiesta":
                     st.error(f"Errore durante l'invio della richiesta: {e}")
 
 # -----------------------------------------------------------------------------
-# 2. PORTALE HR: GESTIONE RICHIESTE E SCALO TICKET
+# 2. PORTALE HR: GESTIONE RICHIESTE E SCALO TICKET (PROTETTO)
 # -----------------------------------------------------------------------------
 elif ruolo == "HR - Gestione Richieste":
-    st.title("📋 Dashboard Gestione Richieste (HR)")
+    if verifica_accesso_hr():
+        st.title("📋 Dashboard Gestione Richieste (HR)")
 
-    richieste_res = supabase.table("richieste").select("*").execute()
-    ordini_res = (
-        supabase.table("ordini")
-        .select("*")
-        .gt("quantita_residua", 0)
-        .execute()
-    )
-
-    df_req = pd.DataFrame(richieste_res.data)
-    df_ordini = pd.DataFrame(ordini_res.data)
-
-    if df_req.empty:
-        st.info("Nessuna richiesta ricevuta al momento.")
-    else:
-        filtro = st.radio(
-            "Filtra per Stato:",
-            ["In lavorazione", "Pronti", "Tutti"],
-            horizontal=True,
+        richieste_res = supabase.table("richieste").select("*").execute()
+        ordini_res = (
+            supabase.table("ordini")
+            .select("*")
+            .gt("quantita_residua", 0)
+            .execute()
         )
 
-        if filtro != "Tutti":
-            df_filtered = df_req[df_req["stato"] == filtro]
+        df_req = pd.DataFrame(richieste_res.data)
+        df_ordini = pd.DataFrame(ordini_res.data)
+
+        if df_req.empty:
+            st.info("Nessuna richiesta ricevuta al momento.")
         else:
-            df_filtered = df_req
-
-        for idx, row in df_filtered.iterrows():
-            is_pronto = row["stato"] == "Pronti"
-            color = "#D4EDDA" if is_pronto else "#FFF3CD"
-            badge = "✅ PRONTI" if is_pronto else "⏳ IN LAVORAZIONE"
-
-            st.markdown(
-                f"""
-            <div style="background-color:{color}; padding:15px; border-radius:8px; margin-top:10px; border:1px solid #ccc;">
-                <h4 style="margin:0;">{row['nome_cognome']} — <strong>{badge}</strong></h4>
-                <p style="margin:5px 0 0 0;">
-                    <b>Email:</b> {row['email']} | <b>Periodo:</b> {row['mese']} {row['anno']} | <b>N° Ticket:</b> {row['num_ticket']}
-                </p>
-            </div>
-            """,
-                unsafe_allow_html=True,
+            filtro = st.radio(
+                "Filtra per Stato:",
+                ["In lavorazione", "Pronti", "Tutti"],
+                horizontal=True,
             )
 
-            col1, col2 = st.columns([2, 3])
-            with col1:
-                st.link_button(
-                    "📄 Scarica/Apri Modulo Firmato", row["file_url"]
+            if filtro != "Tutti":
+                df_filtered = df_req[df_req["stato"] == filtro]
+            else:
+                df_filtered = df_req
+
+            for idx, row in df_filtered.iterrows():
+                is_pronto = row["stato"] == "Pronti"
+                color = "#D4EDDA" if is_pronto else "#FFF3CD"
+                badge = "✅ PRONTI" if is_pronto else "⏳ IN LAVORAZIONE"
+
+                st.markdown(
+                    f"""
+                <div style="background-color:{color}; padding:15px; border-radius:8px; margin-top:10px; border:1px solid #ccc;">
+                    <h4 style="margin:0;">{row['nome_cognome']} — <strong>{badge}</strong></h4>
+                    <p style="margin:5px 0 0 0;">
+                        <b>Email:</b> {row['email']} | <b>Periodo:</b> {row['mese']} {row['anno']} | <b>N° Ticket:</b> {row['num_ticket']}
+                    </p>
+                </div>
+                """,
+                    unsafe_allow_html=True,
                 )
 
-            with col2:
-                if not is_pronto:
-                    if not df_ordini.empty:
-                        ord_sel = st.selectbox(
-                            "Seleziona Ordine/Fattura da cui scalare:",
-                            df_ordini["numero_fattura"].tolist(),
-                            key=f"sel_{row['id']}",
-                        )
-                        if st.button(
-                            "Segna come PRONTI 🚀", key=f"btn_{row['id']}"
-                        ):
-                            ord_data = df_ordini[
-                                df_ordini["numero_fattura"] == ord_sel
-                            ].iloc[0]
-                            nuova_qta = (
-                                ord_data["quantita_residua"] - row["num_ticket"]
+                col1, col2 = st.columns([2, 3])
+                with col1:
+                    st.link_button(
+                        "📄 Scarica/Apri Modulo Firmato", row["file_url"]
+                    )
+
+                with col2:
+                    if not is_pronto:
+                        if not df_ordini.empty:
+                            ord_sel = st.selectbox(
+                                "Seleziona Ordine/Fattura da cui scalare:",
+                                df_ordini["numero_fattura"].tolist(),
+                                key=f"sel_{row['id']}",
+                            )
+                            if st.button(
+                                "Segna come PRONTI 🚀", key=f"btn_{row['id']}"
+                            ):
+                                ord_data = df_ordini[
+                                    df_ordini["numero_fattura"] == ord_sel
+                                ].iloc[0]
+                                nuova_qta = (
+                                    ord_data["quantita_residua"] - row["num_ticket"]
+                                )
+
+                                if nuova_qta >= 0:
+                                    # Update Quantità Residua su Ordini
+                                    supabase.table("ordini").update(
+                                        {"quantita_residua": nuova_qta}
+                                    ).eq("id", ord_data["id"]).execute()
+
+                                    # Update Stato su Richieste
+                                    supabase.table("richieste").update(
+                                        {
+                                            "stato": "Pronti",
+                                            "ordine_id": ord_data["id"],
+                                        }
+                                    ).eq("id", row["id"]).execute()
+
+                                    st.success(
+                                        "Stato aggiornato e ticket scalati con successo!"
+                                    )
+                                    st.rerun()
+                                else:
+                                    st.error(
+                                        "Quantità insufficiente nella fattura selezionata."
+                                    )
+                        else:
+                            st.warning(
+                                "⚠️ Nessun ordine con ticket disponibili in magazzino."
                             )
 
-                            if nuova_qta >= 0:
-                                # Update Quantità Residua su Ordini
-                                supabase.table("ordini").update(
-                                    {"quantita_residua": nuova_qta}
-                                ).eq("id", ord_data["id"]).execute()
-
-                                # Update Stato su Richieste
-                                supabase.table("richieste").update(
-                                    {
-                                        "stato": "Pronti",
-                                        "ordine_id": ord_data["id"],
-                                    }
-                                ).eq("id", row["id"]).execute()
-
-                                st.success(
-                                    "Stato aggiornato e ticket scalati con successo!"
-                                )
-                                st.rerun()
-                            else:
-                                st.error(
-                                    "Quantità insufficiente nella fattura selezionata."
-                                )
-                    else:
-                        st.warning(
-                            "⚠️ Nessun ordine con ticket disponibili in magazzino."
-                        )
-
 # -----------------------------------------------------------------------------
-# 3. PORTALE HR: MAGAZZINO E TRACCIAMENTO FATTURE
+# 3. PORTALE HR: MAGAZZINO E TRACCIAMENTO FATTURE (PROTETTO)
 # -----------------------------------------------------------------------------
 elif ruolo == "HR - Magazzino & Ordini":
-    st.title("📦 Magazzino Ticket & Ordini d'Acquisto")
+    if verifica_accesso_hr():
+        st.title("📦 Magazzino Ticket & Ordini d'Acquisto")
 
-    with st.expander("➕ Registra Nuova Fattura / Ordine Ticket"):
-        with st.form("form_ordine"):
-            num_fat = st.text_input("Numero Fattura / Ordine *")
-            val_uni = st.number_input(
-                "Valore Singolo Ticket (€) *", value=7.00, step=0.50
-            )
-            qta = st.number_input(
-                "Quantità Ticket Acquistati *", min_value=1, step=10
-            )
+        with st.expander("➕ Registra Nuova Fattura / Ordine Ticket"):
+            with st.form("form_ordine"):
+                num_fat = st.text_input("Numero Fattura / Ordine *")
+                val_uni = st.number_input(
+                    "Valore Singolo Ticket (€) *", value=7.00, step=0.50
+                )
+                qta = st.number_input(
+                    "Quantità Ticket Acquistati *", min_value=1, step=10
+                )
 
-            if st.form_submit_button("Salva Ordine"):
-                if num_fat:
-                    supabase.table("ordini").insert(
-                        {
-                            "numero_fattura": num_fat,
-                            "valore_unitario": val_uni,
-                            "quantita_acquistata": qta,
-                            "quantita_residua": qta,
-                        }
-                    ).execute()
-                    st.success("Ordine salvato in magazzino!")
-                    st.rerun()
-                else:
-                    st.error("Inserisci il numero di fattura o ordine.")
+                if st.form_submit_button("Salva Ordine"):
+                    if num_fat:
+                        supabase.table("ordini").insert(
+                            {
+                                "numero_fattura": num_fat,
+                                "valore_unitario": val_uni,
+                                "quantita_acquistata": qta,
+                                "quantita_residua": qta,
+                            }
+                        ).execute()
+                        st.success("Ordine salvato in magazzino!")
+                        st.rerun()
+                    else:
+                        st.error("Inserisci il numero di fattura o ordine.")
 
-    res_ordini = supabase.table("ordini").select("*").execute()
-    if res_ordini.data:
-        df_ord = pd.DataFrame(res_ordini.data)
-        st.subheader("Giacenza Attuale Magazzino")
-        st.dataframe(df_ord, use_container_width=True)
+        res_ordini = supabase.table("ordini").select("*").execute()
+        if res_ordini.data:
+            df_ord = pd.DataFrame(res_ordini.data)
+            st.subheader("Giacenza Attuale Magazzino")
+            st.dataframe(df_ord, use_container_width=True)
 
-        tot_residui = df_ord["quantita_residua"].sum()
-        valore_tot = (
-            df_ord["quantita_residua"] * df_ord["valore_unitario"]
-        ).sum()
+            tot_residui = df_ord["quantita_residua"].sum()
+            valore_tot = (
+                df_ord["quantita_residua"] * df_ord["valore_unitario"]
+            ).sum()
 
-        c1, c2 = st.columns(2)
-        c1.metric("Totale Ticket Rimanenti", f"{tot_residui} ticket")
-        c2.metric("Valore Rimanente Totale", f"€ {valore_tot:.2f}")
-    else:
-        st.info("Nessun ordine registrato nel magazzino.")
+            c1, c2 = st.columns(2)
+            c1.metric("Totale Ticket Rimanenti", f"{tot_residui} ticket")
+            c2.metric("Valore Rimanente Totale", f"€ {valore_tot:.2f}")
+        else:
+            st.info("Nessun ordine registrato nel magazzino.")

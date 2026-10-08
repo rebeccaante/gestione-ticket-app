@@ -337,8 +337,6 @@ elif ruolo == "HR - Gestione Richieste":
                             st.success(f"File '{file_presenze.name}' caricato. Estraggo il CONTAVALORI dalla Colonna AQ...")
 
                             risultati_calcolo = []
-                            
-                            # Cerca l'indice esatto della colonna AQ (A=0, B=1 ... AQ=42)
                             idx_colonna_aq = 42
 
                             for dip in dip_abilitati:
@@ -351,36 +349,28 @@ elif ruolo == "HR - Gestione Richieste":
                                     row_str_vals = [str(val).strip().lower() for val in row.values if pd.notna(val)]
                                     row_text = " ".join(row_str_vals)
 
-                                    # Match nominativo
                                     if all(part in row_text for part in parts):
                                         trovato = True
                                         max_search_rows = min(len(df_raw), idx_row + 12)
 
-                                        # Scansione del blocco del dipendente
                                         for r_i in range(idx_row, max_search_rows):
                                             sub_row = df_raw.iloc[r_i]
                                             sub_row_text = " ".join([str(v).strip().upper() for v in sub_row.values if pd.notna(v)])
 
-                                            # Stop se passiamo al dipendente successivo
                                             if r_i > idx_row and any(k in sub_row_text.lower() for k in ["matr.", "badge", "cod. dip", "riepilogo totale"]):
                                                 break
 
-                                            # Verifica se la riga è PREORD o SMARTW
                                             if "PREORD" in sub_row_text or "SMARTW" in sub_row_text:
                                                 val_aq = None
-                                                
-                                                # Legge il valore nella colonna AQ (o l'ultima colonna valorizzata della riga se AQ è sfalsata)
                                                 if len(sub_row) > idx_colonna_aq and pd.notna(sub_row.iloc[idx_colonna_aq]):
                                                     val_aq = sub_row.iloc[idx_colonna_aq]
                                                 else:
-                                                    # Recupero: prendi l'ultimo valore numerico della riga (la colonna AQ/CONTAVALORI)
                                                     vals_validi = [v for v in sub_row.values if pd.notna(v)]
                                                     if vals_validi:
                                                         val_aq = vals_validi[-1]
 
                                                 if val_aq is not None:
                                                     try:
-                                                        # Converte in intero il conteggio giorni
                                                         val_num = int(float(str(val_aq).replace(',', '.').strip()))
                                                         totale_giorni_dip += val_num
                                                     except ValueError:
@@ -580,24 +570,79 @@ elif ruolo == "HR - Magazzino & Ordini":
                 use_container_width=True
             )
 
+            # -----------------------------------------------------------------
+            # SEZIONE TICKET EROGATI
+            # -----------------------------------------------------------------
             st.markdown("---")
-            st.subheader("⚙️ Gestione & Eliminazione Ordini di Prova")
-            
-            c_sel, c_btn = st.columns([3, 1])
-            with c_sel:
-                ordine_da_eliminare = st.selectbox(
-                    "Seleziona l'ordine da eliminare:",
-                    options=df_display["ID"].tolist(),
-                    format_func=lambda x: f"Fattura/Ordine: {df_display[df_display['ID']==x]['Fattura/Ordine'].values[0]}"
-                )
-            with c_btn:
-                st.write("")
-                st.write("")
-                if st.button("🗑️ Elimina Ordine", type="primary"):
+            st.subheader("📤 Sezione Ticket Erogati")
+            if not df_rich.empty:
+                df_erogati = df_rich.copy()
+                if "ordine_id" in df_erogati.columns:
+                    df_erogati = df_erogati.merge(
+                        df_ord[["id", "numero_fattura"]], 
+                        left_on="ordine_id", 
+                        right_on="id", 
+                        how="left"
+                    )
+                    df_erogati_display = df_erogati[[
+                        "nome_cognome", "email", "mese", "anno", "num_ticket", "numero_fattura"
+                    ]].rename(columns={
+                        "nome_cognome": "Dipendente",
+                        "email": "Email",
+                        "mese": "Mese",
+                        "anno": "Anno",
+                        "num_ticket": "N° Ticket Erogati",
+                        "numero_fattura": "Fattura / Ordine di Riferimento"
+                    })
+                    st.dataframe(df_erogati_display, use_container_width=True)
+                else:
+                    st.info("Nessun dettaglio ordine associato alle richieste erogate.")
+            else:
+                st.info("Nessun ticket erogato al momento.")
+
+            # -----------------------------------------------------------------
+            # GESTIONE ED ELIMINAZIONE ORDINI
+            # -----------------------------------------------------------------
+            st.markdown("---")
+            st.subheader("Gestione ed eliminazione ordini")
+
+            ord_sel_id = st.selectbox(
+                "Seleziona l'ordine da gestire o eliminare:",
+                options=df_ord["id"].tolist(),
+                format_func=lambda x: f"Fattura/Ordine: {df_ord[df_ord['id']==x]['numero_fattura'].values[0]}"
+            )
+
+            row_selected = df_ord[df_ord["id"] == ord_sel_id].iloc[0]
+
+            tab_mod, tab_del = st.tabs(["✏️ Modifica Dati Ordine", "🗑️ Elimina Ordine"])
+
+            with tab_mod:
+                with st.form(f"form_edit_ord_{ord_sel_id}"):
+                    edit_fat = st.text_input("Numero Fattura / Ordine", value=str(row_selected["numero_fattura"]))
+                    edit_val = st.number_input("Valore Singolo Ticket (€)", value=float(row_selected["valore_unitario"]), step=0.10)
+                    edit_qta = st.number_input("Quantità Ticket Acquistati", value=int(row_selected["quantita_acquistata"]), step=100)
+                    edit_res = st.number_input("Residuo Ordine Precedente", value=int(row_selected.get("residuo_precedente", 0) or 0), step=1)
+
+                    if st.form_submit_button("💾 Salva Modifiche Ordine"):
+                        try:
+                            supabase.table("ordini").update({
+                                "numero_fattura": edit_fat,
+                                "valore_unitario": edit_val,
+                                "quantita_acquistata": edit_qta,
+                                "residuo_precedente": edit_res
+                            }).eq("id", ord_sel_id).execute()
+                            st.success("✅ Ordine aggiornato con successo!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Errore durante l'aggiornamento dell'ordine: {e}")
+
+            with tab_del:
+                st.warning("⚠️ L'eliminazione dell'ordine scollegherà eventuali richieste erogate associate.")
+                if st.button("🗑️ Conferma ed Elimina Ordine", type="primary", key=f"btn_del_{ord_sel_id}"):
                     try:
-                        supabase.table("richieste").update({"ordine_id": None}).eq("ordine_id", ordine_da_eliminare).execute()
-                        supabase.table("ordini").delete().eq("id", ordine_da_eliminare).execute()
-                        st.success("Ordine eliminato!")
+                        supabase.table("richieste").update({"ordine_id": None}).eq("ordine_id", ord_sel_id).execute()
+                        supabase.table("ordini").delete().eq("id", ord_sel_id).execute()
+                        st.success("✅ Ordine eliminato con successo!")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Errore durante l'eliminazione: {e}")

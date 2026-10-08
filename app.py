@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 from supabase import create_client
+import re
 
 # Configurazione Pagina
 st.set_page_config(
@@ -310,7 +311,7 @@ elif ruolo == "HR - Gestione Richieste":
             # SUB-TAB B: UPLOAD & CALCOLO LIBRO PRESENZE
             with sub_tab_b:
                 st.markdown("### 📄 Upload Libro Presenze Mensile")
-                st.markdown("Carica il file Excel o CSV del Libro Presenze. Verranno contati esclusivamente i giorni con causale **PREORD** e **SMARTW**.")
+                st.markdown("Carica il file Excel o CSV. Il sistema filtrerà **esclusivamente i valori numerici associati a PREORD e SMARTW** nella colonna AQ.")
 
                 col_u1, col_u2 = st.columns(2)
                 with col_u1:
@@ -333,34 +334,61 @@ elif ruolo == "HR - Gestione Richieste":
                         if not dip_abilitati:
                             st.warning("⚠️ Non ci sono dipendenti abilitati nell'Anagrafica. Aggiungili nel tab 'Anagrafica Nominativi con Diritto'.")
                         else:
-                            st.success(f"File '{file_presenze.name}' caricato. Ricerca delle causali 'PREORD' e 'SMARTW' in corso...")
+                            st.success(f"File '{file_presenze.name}' caricato. Estraggo i dati per PREORD e SMARTW dalla Colonna AQ...")
 
                             risultati_calcolo = []
+                            idx_colonna_aq = 42  # Indice della colonna AQ (0-indexed)
 
                             for dip in dip_abilitati:
-                                dip_norm = dip.strip().lower()
+                                parts = dip.strip().lower().split()
                                 trovato = False
-                                conteggio_giorni = 0
+                                totale_dip_ticket = 0
 
-                                for idx_row, row in df_raw.iterrows():
+                                # Cerca le righe dedicate a questo dipendente
+                                for idx_row in range(len(df_raw)):
+                                    row = df_raw.iloc[idx_row]
                                     row_str_vals = [str(val).strip().lower() for val in row.values if pd.notna(val)]
                                     row_text = " ".join(row_str_vals)
 
-                                    if dip_norm in row_text:
+                                    if all(part in row_text for part in parts):
                                         trovato = True
-                                        # Conteggio ESCLUSIVO delle sole causali 'PREORD' e 'SMARTW'
-                                        for val_cell in row.values:
-                                            s_cell = str(val_cell).strip().upper()
-                                            if "PREORD" in s_cell or "SMARTW" in s_cell:
-                                                conteggio_giorni += 1
+
+                                        # Scansiona le righe adiacenti del blocco del dipendente (es. 10 righe sotto)
+                                        max_search_rows = min(len(df_raw), idx_row + 12)
+                                        for r_i in range(idx_row, max_search_rows):
+                                            sub_row = df_raw.iloc[r_i]
+                                            sub_row_text = " ".join([str(v).strip().upper() for v in sub_row.values if pd.notna(v)])
+
+                                            # Se incontriamo un altro dipendente ci fermiamo
+                                            if r_i > idx_row and any(c_val in sub_row_text.lower() for c_val in ["matr.", "badge", "cod. dip"]):
+                                                break
+
+                                            # Se la riga contiene PREORD o SMARTW
+                                            if "PREORD" in sub_row_text or "SMARTW" in sub_row_text:
+                                                # Estrai il valore numerico dalla colonna AQ (o da celle vicine)
+                                                val_aq = None
+                                                if len(sub_row) > idx_colonna_aq and pd.notna(sub_row.iloc[idx_colonna_aq]):
+                                                    val_aq = sub_row.iloc[idx_colonna_aq]
+
+                                                if val_aq is not None:
+                                                    # Estrai solo cifre o numeri decimali
+                                                    nums = re.findall(r'\d+(?:\.\d+)?', str(val_aq))
+                                                    if nums:
+                                                        totale_dip_ticket += int(float(nums[0]))
+                                                    else:
+                                                        # Se la riga riporta la causale senza il totale, conta 1
+                                                        totale_dip_ticket += 1
+                                                else:
+                                                    totale_dip_ticket += 1
+
                                         break
 
                                 risultati_calcolo.append({
                                     "Cognome e Nome": dip,
                                     "Presente nel Libro Presenze": "✅ SI" if trovato else "❌ NO / Non Trovato",
-                                    "Giorni con PREORD / SMARTW": conteggio_giorni,
-                                    "N° Ticket Spettanti": conteggio_giorni,
-                                    "Valore Economico (€)": conteggio_giorni * 5.20
+                                    "Ticket PREORD + SMARTW (Col. AQ)": totale_dip_ticket,
+                                    "N° Ticket Spettanti": totale_dip_ticket,
+                                    "Valore Economico (€)": totale_dip_ticket * 5.20
                                 })
 
                             df_res_calc = pd.DataFrame(risultati_calcolo)
@@ -391,7 +419,11 @@ elif ruolo == "HR - Gestione Richieste":
                                         n_ticket_c = int(row_c["N° Ticket Spettanti"])
 
                                         if not df_mat_db.empty and "assegnato_a" in df_mat_db.columns:
-                                            match_tess = df_mat_db[df_mat_db["assegnato_a"].str.strip().str.lower() == nome_dip_c.strip().lower()]
+                                            parts_c = nome_dip_c.strip().lower().split()
+                                            
+                                            match_tess = df_mat_db[df_mat_db["assegnato_a"].apply(
+                                                lambda x: all(p in str(x).lower() for p in parts_c) if pd.notna(x) and str(x).strip() != "" else False
+                                            )]
                                             
                                             if not match_tess.empty:
                                                 tess_row = match_tess.iloc[0]
@@ -400,7 +432,7 @@ elif ruolo == "HR - Gestione Richieste":
                                                 update_dict = {
                                                     "numero_tessera": t_num,
                                                     "anno": a_presenza,
-                                                    "assegnato_a": nome_dip_c,
+                                                    "assegnato_a": tess_row["assegnato_a"],
                                                     m_presenza.lower(): n_ticket_c
                                                 }
 
@@ -412,7 +444,7 @@ elif ruolo == "HR - Gestione Richieste":
                                     if aggiornati_cnt > 0:
                                         st.success(f"✅ Matrice aggiornata con successo per {aggiornati_cnt} dipendenti/tessere nel mese di {m_presenza.capitalize()}!")
                                     else:
-                                        st.warning("⚠️ Nessun abbinamento trovato tra la colonna 'Assegnato Momentaneamente a' delle Tessere e i Nominativi nell'Anagrafica. Assicurati che i nomi corrispondano perfettamente nella Matrice Tessere.")
+                                        st.warning("⚠️ Nessun abbinamento trovato tra la colonna 'Assegnato Momentaneamente a' delle Tessere e i Nominativi nell'Anagrafica. Assicurati che i nomi corrispondano nella Matrice Tessere.")
 
                                 except Exception as e_pop:
                                     st.error(f"Errore durante l'aggiornamento automatico della matrice: {e_pop}")
@@ -446,123 +478,4 @@ elif ruolo == "HR - Gestione Richieste":
                             st.error("Inserisci il nome e cognome.")
 
                 res_dip = supabase.table("regole_dipendenti").select("*").order("nome_cognome").execute()
-                if res_dip.data:
-                    df_dip = pd.DataFrame(res_dip.data)
-                    st.markdown("#### Lista Dipendenti Registrati")
-                    st.dataframe(
-                        df_dip[["nome_cognome", "ha_diritto", "note"]].rename(columns={
-                            "nome_cognome": "Cognome e Nome",
-                            "ha_diritto": "Avente Diritto Ticket",
-                            "note": "Note"
-                        }),
-                        use_container_width=True
-                    )
-
-                    with st.expander("🗑️ Rimuovi Dipendente dall'Anagrafica"):
-                        dip_del = st.selectbox("Seleziona Dipendente da Rimuovere:", df_dip["nome_cognome"].tolist())
-                        if st.button("Rimuovi Dipendente", type="primary"):
-                            supabase.table("regole_dipendenti").delete().eq("nome_cognome", dip_del).execute()
-                            st.success("Dipendente rimosso dall'anagrafica.")
-                            st.rerun()
-
-# -----------------------------------------------------------------------------
-# 3. PORTALE HR: MAGAZZINO E ORDINI
-# -----------------------------------------------------------------------------
-elif ruolo == "HR - Magazzino & Ordini":
-    if verifica_accesso_hr():
-        st.title("📦 Magazzino Ticket & Tracciamento Ordini")
-
-        res_ordini = supabase.table("ordini").select("*").order("created_at", desc=False).execute()
-        res_richieste = supabase.table("richieste").select("*").eq("stato", "Pronti").execute()
-
-        df_ord = pd.DataFrame(res_ordini.data) if res_ordini.data else pd.DataFrame()
-        df_rich = pd.DataFrame(res_richieste.data) if res_richieste.data else pd.DataFrame()
-
-        ultimo_residuo_suggerito = 0
-        if not df_ord.empty:
-            last_order = df_ord.iloc[-1]
-            erogati_last = df_rich[df_rich["ordine_id"] == last_order["id"]]["num_ticket"].sum() if not df_rich.empty else 0
-            res_prec_last = last_order.get("residuo_precedente", 0) or 0
-            ultimo_residuo_suggerito = max(0, (last_order["quantita_acquistata"] - erogati_last) + res_prec_last)
-
-        with st.expander("➕ Registra Nuova Fattura / Ordine Ticket"):
-            with st.form("form_ordine"):
-                num_fat = st.text_input("Numero Fattura / Ordine *")
-                val_uni = st.number_input("Valore Singolo Ticket (€) *", value=5.20, step=0.10)
-                qta = st.number_input("Quantità Ticket Acquistati *", min_value=1, value=2000, step=100)
-                res_prec = st.number_input(
-                    "Residuo Ordine Precedente", 
-                    value=int(ultimo_residuo_suggerito), 
-                    step=1
-                )
-
-                if st.form_submit_button("Salva Ordine"):
-                    if num_fat:
-                        supabase.table("ordini").insert(
-                            {
-                                "numero_fattura": num_fat,
-                                "valore_unitario": val_uni,
-                                "quantita_acquistata": qta,
-                                "quantita_residua": qta,
-                                "residuo_precedente": res_prec,
-                            }
-                        ).execute()
-                        st.success("Ordine salvato con successo!")
-                        st.rerun()
-                    else:
-                        st.error("Inserisci il numero di fattura o ordine.")
-
-        if not df_ord.empty:
-            st.subheader("📋 Riepilogo Ordini & Giacenza Ticket")
-
-            ordini_calcolati = []
-            for idx, row_ord in df_ord.iterrows():
-                if not df_rich.empty and "ordine_id" in df_rich.columns:
-                    erogati = df_rich[df_rich["ordine_id"] == row_ord["id"]]["num_ticket"].sum()
-                else:
-                    erogati = 0
-
-                acquistati = row_ord["quantita_acquistata"]
-                residuo_prec = row_ord.get("residuo_precedente", 0) or 0
-                residui_totali = (acquistati - erogati) + residuo_prec
-
-                ordini_calcolati.append({
-                    "ID": row_ord["id"],
-                    "Fattura/Ordine": row_ord["numero_fattura"],
-                    "Valore Unitario": f"€ {row_ord['valore_unitario']:.2f}",
-                    "Ticket Acquistati": acquistati,
-                    "Ticket Erogati": erogati,
-                    "Residuo Ordine Precedente": residuo_prec,
-                    "Ticket Residui TOT": residui_totali
-                })
-
-            df_display = pd.DataFrame(ordini_calcolati)
-
-            st.dataframe(
-                df_display.drop(columns=["ID"]),
-                use_container_width=True
-            )
-
-            st.markdown("---")
-            st.subheader("⚙️ Gestione & Eliminazione Ordini di Prova")
-            
-            c_sel, c_btn = st.columns([3, 1])
-            with c_sel:
-                ordine_da_eliminare = st.selectbox(
-                    "Seleziona l'ordine da eliminare:",
-                    options=df_display["ID"].tolist(),
-                    format_func=lambda x: f"Fattura/Ordine: {df_display[df_display['ID']==x]['Fattura/Ordine'].values[0]}"
-                )
-            with c_btn:
-                st.write("")
-                st.write("")
-                if st.button("🗑️ Elimina Ordine", type="primary"):
-                    try:
-                        supabase.table("richieste").update({"ordine_id": None}).eq("ordine_id", ordine_da_eliminare).execute()
-                        supabase.table("ordini").delete().eq("id", ordine_da_eliminare).execute()
-                        st.success("Ordine eliminato!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Errore durante l'eliminazione: {e}")
-        else:
-            st.info("Nessun ordine registrato nel magazzino.")
+                if

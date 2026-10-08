@@ -17,6 +17,13 @@ PASSWORD_HR = "HR2026!"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Mesi per ciascun anno
+MESI_2026 = ["ottobre", "novembre", "dicembre"]
+MESI_TUTTI = [
+    "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
+    "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"
+]
+
 # -----------------------------------------------------------------------------
 # MENU NAVIGAZIONE
 # -----------------------------------------------------------------------------
@@ -57,7 +64,7 @@ if ruolo == "Dipendente - Nuova Richiesta":
         with c1:
             email = st.text_input("Email aziendale *")
             nome_cognome = st.text_input("Cognome e Nome *")
-            anno = st.selectbox("Anno *", [2025, 2026, 2027])
+            anno = st.selectbox("Anno *", [2026, 2027, 2028])
         with c2:
             mese = st.selectbox(
                 "Mese *",
@@ -181,84 +188,247 @@ elif ruolo == "HR - Gestione Richieste":
                             else:
                                 st.warning("⚠️ Nessun ordine disponibile in magazzino.")
 
-        # SUB-TAB 2: TICKET DIGITALI / TESSERE
+        # SUB-TAB 2: TICKET DIGITALI & LIBRO PRESENZE
         with tab2:
-            st.subheader("💳 Caricamento & Tracciamento Tessere Digitali")
+            st.subheader("💳 Tracciamento Tessere Digitali & Calcolo Presenze")
 
-            with st.expander("➕ Inserisci/Aggiorna Ricarica Tessera Digital", expanded=True):
-                with st.form("form_tessera"):
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        num_tessera = st.text_input("Numero Tessera *")
-                        assegnato_a = st.text_input("Assegnata Momentaneamente a (Persona)")
-                        num_t = st.number_input("N° Ticket da caricare *", min_value=1, step=1)
-                    with c2:
-                        m_tessera = st.selectbox(
-                            "Mese di riferimento *",
-                            [
-                                "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-                                "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
-                            ]
-                        )
-                        a_tessera = st.selectbox("Anno di riferimento *", [2025, 2026, 2027])
+            sub_tab_a, sub_tab_b, sub_tab_c = st.tabs([
+                "📊 Matrice Tessere Digitali", 
+                "📁 Upload & Calcolo Libro Presenze", 
+                "👥 Anagrafica Nominativi con Diritto"
+            ])
 
-                    if st.form_submit_button("Registra Ricarica Tessera"):
-                        if num_tessera:
-                            supabase.table("tessere_digitali").insert({
-                                "numero_tessera": num_tessera,
-                                "assegnato_a": assegnato_a,
-                                "mese": m_tessera,
-                                "anno": a_tessera,
-                                "num_ticket": num_t
-                            }).execute()
-                            st.success("Ricarica tessera salvata con successo!")
+            # SUB-TAB A: MATRICE TESSERE
+            with sub_tab_a:
+                c_anno, c_add_tess = st.columns([2, 3])
+                with c_anno:
+                    anno_sel = st.selectbox("Seleziona Anno di Riferimento:", [2026, 2027, 2028], index=0)
+
+                with c_add_tess:
+                    with st.expander("➕ Aggiungi Nuova Tessera Digital"):
+                        with st.form("form_nuova_tessera", clear_on_submit=True):
+                            nuovo_num_tess = st.text_input("Numero Nuova Tessera *")
+                            nuovo_ass = st.text_input("Assegnato Momentaneamente a")
+                            if st.form_submit_button("Aggiungi Tessera"):
+                                if nuovo_num_tess:
+                                    payload_new = {
+                                        "numero_tessera": nuovo_num_tess,
+                                        "assegnato_a": nuovo_ass,
+                                        "anno": anno_sel
+                                    }
+                                    for m in MESI_TUTTI:
+                                        payload_new[m] = 0
+                                    supabase.table("matrice_tessere").insert(payload_new).execute()
+                                    st.success(f"Tessera {nuovo_num_tess} aggiunta con successo!")
+                                    st.rerun()
+
+                mesi_visibili = MESI_2026 if anno_sel == 2026 else MESI_TUTTI
+
+                res_matrice = supabase.table("matrice_tessere").select("*").eq("anno", anno_sel).execute()
+                df_db = pd.DataFrame(res_matrice.data) if res_matrice.data else pd.DataFrame()
+
+                # Lista tessere base se il DB è vuoto
+                tessere_base = [f"008000{i:02d}" for i in range(1, 31)]
+                
+                rows_data = []
+                tessere_esistenti = df_db["numero_tessera"].tolist() if not df_db.empty else []
+                tessere_totali = list(set(tessere_base + tessere_esistenti))
+                tessere_totali.sort()
+
+                for t_num in tessere_totali:
+                    if not df_db.empty and t_num in df_db["numero_tessera"].values:
+                        r = df_db[df_db["numero_tessera"] == t_num].iloc[0].to_dict()
+                    else:
+                        r = {"numero_tessera": t_num, "assegnato_a": "", "anno": anno_sel}
+                        for m in MESI_TUTTI:
+                            r[m] = 0
+                    rows_data.append(r)
+
+                df_grid = pd.DataFrame(rows_data)
+
+                cols_order = ["numero_tessera", "assegnato_a"] + mesi_visibili
+                df_grid = df_grid[cols_order]
+
+                rename_dict = {
+                    "numero_tessera": "N° Tessera",
+                    "assegnato_a": "Assegnato Momentaneamente a",
+                }
+                for m in mesi_visibili:
+                    rename_dict[m] = m.capitalize()
+
+                df_display = df_grid.rename(columns=rename_dict)
+
+                st.info("💡 Inserisci o modifica i dati nelle celle e salva.")
+
+                edited_df = st.data_editor(
+                    df_display,
+                    use_container_width=True,
+                    disabled=["N° Tessera"],
+                    num_rows="dynamic",
+                    key=f"editor_tessere_{anno_sel}"
+                )
+
+                if st.button("💾 Salva Modifiche Tabella Tessere", type="primary"):
+                    try:
+                        for _, row in edited_df.iterrows():
+                            t_num = row["N° Tessera"]
+                            ass_a = row["Assegnato Momentaneamente a"]
+                            
+                            update_payload = {
+                                "numero_tessera": t_num,
+                                "assegnato_a": ass_a if pd.notna(ass_a) else "",
+                                "anno": anno_sel,
+                            }
+                            for m in mesi_visibili:
+                                val_m = row[m.capitalize()]
+                                update_payload[m] = int(val_m) if pd.notna(val_m) else 0
+
+                            supabase.table("matrice_tessere").upsert(
+                                update_payload, on_conflict="numero_tessera,anno"
+                            ).execute()
+
+                        st.success("✅ Tabelle salvate con successo!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Errore durante il salvataggio: {e}")
+
+                # Totali
+                st.markdown("---")
+                tot_ticket_anno = 0
+                for m in mesi_visibili:
+                    col_cap = m.capitalize()
+                    if col_cap in edited_df.columns:
+                        tot_ticket_anno += edited_df[col_cap].fillna(0).sum()
+
+                tot_valore_anno = tot_ticket_anno * 5.20
+
+                col_m1, col_m2 = st.columns(2)
+                col_m1.metric(f"Totale Ticket Caricati ({anno_sel})", f"{int(tot_ticket_anno)} ticket")
+                col_m2.metric(f"Valore Economico Totale ({anno_sel})", f"€ {tot_valore_anno:.2f}")
+
+            # SUB-TAB B: UPLOAD & CALCOLO LIBRO PRESENZE
+            with sub_tab_b:
+                st.markdown("### 📄 Upload Libro Presenze Mensile")
+                st.markdown("Carica il file Excel o CSV del Libro Presenze del mese per calcolare in automatico i ticket spettanti per ciascun dipendente abilitato.")
+
+                col_u1, col_u2 = st.columns(2)
+                with col_u1:
+                    m_presenza = st.selectbox("Mese Presenze:", MESI_TUTTI, index=9)
+                with col_u2:
+                    a_presenza = st.selectbox("Anno Presenze:", [2026, 2027, 2028], index=0)
+
+                file_presenze = st.file_uploader("Carica Libro Presenze (Excel o CSV)", type=["xlsx", "xls", "csv"])
+
+                if file_presenze:
+                    try:
+                        if file_presenze.name.endswith(".csv"):
+                            df_p = pd.read_csv(file_presenze)
+                        else:
+                            df_p = pd.read_excel(file_presenze)
+
+                        st.success(f"File '{file_presenze.name}' caricato correttamente!")
+                        st.markdown("#### Anteprima File Presenze")
+                        st.dataframe(df_p.head(10), use_container_width=True)
+
+                        # Recupera nominativi abilitati dall'anagrafica
+                        res_regole = supabase.table("regole_dipendenti").select("*").eq("ha_diritto", True).execute()
+                        dip_abilitati = [r["nome_cognome"].lower() for r in res_regole.data] if res_regole.data else []
+
+                        st.markdown("---")
+                        st.markdown("### 🧮 Calcolo Spettanze Ticket")
+
+                        # Rilevamento colonne nominativo e presenze/smartworking
+                        col_nome = None
+                        for c in df_p.columns:
+                            if any(k in str(c).lower() for k in ["nome", "dipendente", "cognome", "nominativo"]):
+                                col_nome = c
+                                break
+
+                        if col_nome:
+                            risultati_calcolo = []
+                            for idx, r_dip in df_p.iterrows():
+                                nome_val = str(r_dip[col_nome]).strip()
+                                is_abilitato = any(d in nome_val.lower() for d in dip_abilitati) if dip_abilitati else True
+
+                                # Calcolo giorni lavorati / presenze / smartworking
+                                conteggio_giorni = 0
+                                for col_val in r_dip.values:
+                                    s_val = str(col_val).upper()
+                                    if any(code in s_val for code in ["P", "SW", "PRESENTE", "SMART", "WORK", "1"]):
+                                        conteggio_giorni += 1
+
+                                ticket_spettanti = conteggio_giorni if is_abilitato else 0
+
+                                risultati_calcolo.append({
+                                    "Nominativo": nome_val,
+                                    "Avente Diritto Ticket": "✅ SI" if is_abilitato else "❌ NO",
+                                    "Giorni Lavorati / Presenze / SW": conteggio_giorni,
+                                    "N° Ticket Spettanti": ticket_spettanti,
+                                    "Valore Economico (€)": ticket_spettanti * 5.20
+                                })
+
+                            df_res_calc = pd.DataFrame(risultati_calcolo)
+                            st.dataframe(df_res_calc, use_container_width=True)
+
+                            tot_ticket_calc = df_res_calc["N° Ticket Spettanti"].sum()
+                            tot_valore_calc = tot_ticket_calc * 5.20
+
+                            c_k1, c_k2 = st.columns(2)
+                            c_k1.metric("Totale Ticket Spettanti Mese", f"{tot_ticket_calc} ticket")
+                            c_k2.metric("Valore Economico Totale Mese", f"€ {tot_valore_calc:.2f}")
+
+                        else:
+                            st.warning("Seleziona manualmente la colonna contenente i Nomi/Cognomi dei dipendenti:")
+                            st.write(df_p.columns.tolist())
+
+                    except Exception as e:
+                        st.error(f"Errore nella lettura del file presenze: {e}")
+
+            # SUB-TAB C: ANAGRAFICA NOMINATIVI CON DIRITTO
+            with sub_tab_c:
+                st.markdown("### 👥 Anagrafica Personale e Gestione Diritto Ticket")
+                st.markdown("Aggiungi o modifica i dipendenti che hanno diritto a **1 ticket per giorno lavorato**.")
+
+                with st.form("form_add_dip", clear_on_submit=True):
+                    c_n1, c_n2 = st.columns([3, 1])
+                    with c_n1:
+                        nuovo_nome = st.text_input("Cognome e Nome Dipendente *")
+                    with c_n2:
+                        ha_diritto_input = st.checkbox("Ha Diritto ai Ticket", value=True)
+                    
+                    note_dip = st.text_input("Note (opzionale)")
+                    if st.form_submit_button("Aggiungi / Aggiorna Dipendente"):
+                        if nuovo_nome:
+                            supabase.table("regole_dipendenti").upsert({
+                                "nome_cognome": nuovo_nome.strip(),
+                                "ha_diritto": ha_diritto_input,
+                                "note": note_dip
+                            }, on_conflict="nome_cognome").execute()
+                            st.success(f"Dipendente '{nuovo_nome}' registrato!")
                             st.rerun()
                         else:
-                            st.error("Inserisci il numero di tessera.")
+                            st.error("Inserisci il nome e cognome.")
 
-            # Tabella Tessere Registrate
-            res_tessere = supabase.table("tessere_digitali").select("*").order("created_at", desc=True).execute()
-            if res_tessere.data:
-                df_tess = pd.DataFrame(res_tessere.data)
-
-                st.markdown("### 📋 Registro Ricariche Tessere Digitali")
-                
-                # Calcolo Valore Economico (€ 5.20 / ticket)
-                df_tess["Valore Economico (€)"] = df_tess["num_ticket"] * 5.20
-
-                df_show = df_tess[[
-                    "numero_tessera", "assegnato_a", "mese", "anno", "num_ticket", "Valore Economico (€)"
-                ]].rename(columns={
-                    "numero_tessera": "N° Tessera",
-                    "assegnato_a": "Assegnato a",
-                    "mese": "Mese",
-                    "anno": "Anno",
-                    "num_ticket": "N° Ticket Caricati"
-                })
-
-                st.dataframe(df_show, use_container_width=True)
-
-                # Totali Generali Digitali
-                tot_ticket_dig = df_tess["num_ticket"].sum()
-                tot_valore_dig = tot_ticket_dig * 5.20
-
-                c1, c2 = st.columns(2)
-                c1.metric("Totale Ticket Digitali Erogati", f"{tot_ticket_dig} ticket")
-                c2.metric("Valore Economico Totale Digitali", f"€ {tot_valore_dig:.2f}")
-
-                # Possibilità di eliminare ricariche di prova
-                with st.expander("🗑️ Elimina Ricarica Tessera"):
-                    tess_del = st.selectbox(
-                        "Seleziona carica da eliminare:",
-                        options=df_tess["id"].tolist(),
-                        format_func=lambda x: f"Tessera: {df_tess[df_tess['id']==x]['numero_tessera'].values[0]} - {df_tess[df_tess['id']==x]['assegnato_a'].values[0]} ({df_tess[df_tess['id']==x]['num_ticket'].values[0]} ticket)"
+                # Tabella Registro Dipendenti
+                res_dip = supabase.table("regole_dipendenti").select("*").order("nome_cognome").execute()
+                if res_dip.data:
+                    df_dip = pd.DataFrame(res_dip.data)
+                    st.markdown("#### Lista Dipendenti Registrati")
+                    st.dataframe(
+                        df_dip[["nome_cognome", "ha_diritto", "note"]].rename(columns={
+                            "nome_cognome": "Cognome e Nome",
+                            "ha_diritto": "Avente Diritto Ticket",
+                            "note": "Note"
+                        }),
+                        use_container_width=True
                     )
-                    if st.button("Elimina Voce Tessera", type="primary"):
-                        supabase.table("tessere_digitali").delete().eq("id", tess_del).execute()
-                        st.success("Voce eliminata!")
-                        st.rerun()
-            else:
-                st.info("Nessuna ricarica tessera digitale registrata.")
+
+                    with st.expander("🗑️ Rimuovi Dipendente dall'Anagrafica"):
+                        dip_del = st.selectbox("Seleziona Dipendente da Rimuovere:", df_dip["nome_cognome"].tolist())
+                        if st.button("Rimuovi Dipendente", type="primary"):
+                            supabase.table("regole_dipendenti").delete().eq("nome_cognome", dip_del).execute()
+                            st.success("Dipendente rimosso dall'anagrafica.")
+                            st.rerun()
 
 # -----------------------------------------------------------------------------
 # 3. PORTALE HR: MAGAZZINO E ORDINI

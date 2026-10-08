@@ -12,9 +12,9 @@ st.set_page_config(
 # CONFIGURAZIONE CREDENZIALI & PASSWORD HR
 # -----------------------------------------------------------------------------
 SUPABASE_URL = "https://mvdcrqmgjtqtllnexdwb.supabase.co"
-SUPABASE_KEY = "sb_publishable_BzXfnuLH_bur-gQFf77keQ_RTbUSiOo"
+SUPABASE_KEY = "INCOLLA_QUI_LA_TUA_PUBLISHABLE_KEY"
 
-PASSWORD_HR = "HR2026!"
+PASSWORD_HR = "HR2025!"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -308,10 +308,10 @@ elif ruolo == "HR - Gestione Richieste":
                 col_m1.metric(f"Totale Ticket Caricati ({anno_sel})", f"{int(tot_ticket_anno)} ticket")
                 col_m2.metric(f"Valore Economico Totale ({anno_sel})", f"€ {tot_valore_anno:.2f}")
 
-            # SUB-TAB B: UPLOAD & CALCOLO LIBRO PRESENZE
+            # SUB-TAB B: UPLOAD & CALCOLO LIBRO PRESENZE (LETTURA DIRETTA COLONNA AQ)
             with sub_tab_b:
                 st.markdown("### 📄 Upload Libro Presenze Mensile")
-                st.markdown("Carica il file Excel o CSV. Verranno contati **soltanto i numeri corrispondenti alle causali PREORD e SMARTW** nella colonna AQ.")
+                st.markdown("Carica il file Excel o CSV. Verranno presi i valori della **colonna AQ** (CONTAVALORI giorni) per le sole causali **PREORD** e **SMARTW**.")
 
                 col_u1, col_u2 = st.columns(2)
                 with col_u1:
@@ -334,54 +334,66 @@ elif ruolo == "HR - Gestione Richieste":
                         if not dip_abilitati:
                             st.warning("⚠️ Non ci sono dipendenti abilitati nell'Anagrafica. Aggiungili nel tab 'Anagrafica Nominativi con Diritto'.")
                         else:
-                            st.success(f"File '{file_presenze.name}' caricato. Estraggo i dati per PREORD e SMARTW dalla Colonna AQ...")
+                            st.success(f"File '{file_presenze.name}' caricato. Estraggo il CONTAVALORI dalla Colonna AQ...")
 
                             risultati_calcolo = []
-                            idx_colonna_aq = 42  # Colonna AQ in base 0 (43esima colonna)
+                            
+                            # Cerca l'indice esatto della colonna AQ (A=0, B=1 ... AQ=42)
+                            idx_colonna_aq = 42
 
                             for dip in dip_abilitati:
                                 parts = dip.strip().lower().split()
                                 trovato = False
-                                totale_dip_ticket = 0
+                                totale_giorni_dip = 0
 
                                 for idx_row in range(len(df_raw)):
                                     row = df_raw.iloc[idx_row]
                                     row_str_vals = [str(val).strip().lower() for val in row.values if pd.notna(val)]
                                     row_text = " ".join(row_str_vals)
 
+                                    # Match nominativo
                                     if all(part in row_text for part in parts):
                                         trovato = True
-                                        max_search_rows = min(len(df_raw), idx_row + 15)
+                                        max_search_rows = min(len(df_raw), idx_row + 12)
 
+                                        # Scansione del blocco del dipendente
                                         for r_i in range(idx_row, max_search_rows):
                                             sub_row = df_raw.iloc[r_i]
                                             sub_row_text = " ".join([str(v).strip().upper() for v in sub_row.values if pd.notna(v)])
 
-                                            if r_i > idx_row and any(c_val in sub_row_text.lower() for c_val in ["matr.", "badge", "cod. dip"]):
+                                            # Stop se passiamo al dipendente successivo
+                                            if r_i > idx_row and any(k in sub_row_text.lower() for k in ["matr.", "badge", "cod. dip", "riepilogo totale"]):
                                                 break
 
+                                            # Verifica se la riga è PREORD o SMARTW
                                             if "PREORD" in sub_row_text or "SMARTW" in sub_row_text:
                                                 val_aq = None
+                                                
+                                                # Legge il valore nella colonna AQ (o l'ultima colonna valorizzata della riga se AQ è sfalsata)
                                                 if len(sub_row) > idx_colonna_aq and pd.notna(sub_row.iloc[idx_colonna_aq]):
                                                     val_aq = sub_row.iloc[idx_colonna_aq]
+                                                else:
+                                                    # Recupero: prendi l'ultimo valore numerico della riga (la colonna AQ/CONTAVALORI)
+                                                    vals_validi = [v for v in sub_row.values if pd.notna(v)]
+                                                    if vals_validi:
+                                                        val_aq = vals_validi[-1]
 
                                                 if val_aq is not None:
-                                                    nums = re.findall(r'\d+(?:\.\d+)?', str(val_aq))
-                                                    if nums:
-                                                        totale_dip_ticket += int(float(nums[0]))
-                                                    else:
-                                                        totale_dip_ticket += 1
-                                                else:
-                                                    totale_dip_ticket += 1
+                                                    try:
+                                                        # Converte in intero il conteggio giorni
+                                                        val_num = int(float(str(val_aq).replace(',', '.').strip()))
+                                                        totale_giorni_dip += val_num
+                                                    except ValueError:
+                                                        pass
 
                                         break
 
                                 risultati_calcolo.append({
                                     "Cognome e Nome": dip,
                                     "Presente nel Libro Presenze": "✅ SI" if trovato else "❌ NO / Non Trovato",
-                                    "Ticket PREORD + SMARTW (Col. AQ)": totale_dip_ticket,
-                                    "N° Ticket Spettanti": totale_dip_ticket,
-                                    "Valore Economico (€)": totale_dip_ticket * 5.20
+                                    "Ticket PREORD + SMARTW (Col. AQ)": totale_giorni_dip,
+                                    "N° Ticket Spettanti": totale_giorni_dip,
+                                    "Valore Economico (€)": totale_giorni_dip * 5.20
                                 })
 
                             df_res_calc = pd.DataFrame(risultati_calcolo)
@@ -437,7 +449,7 @@ elif ruolo == "HR - Gestione Richieste":
                                     if aggiornati_cnt > 0:
                                         st.success(f"✅ Matrice aggiornata con successo per {aggiornati_cnt} dipendenti/tessere nel mese di {m_presenza.capitalize()}!")
                                     else:
-                                        st.warning("⚠️ Nessun abbinamento trovato tra la colonna 'Assegnato Momentaneamente a' delle Tessere e i Nominativi nell'Anagrafica. Assicurati che i nomi corrispondano nella Matrice Tessere.")
+                                        st.warning("⚠️ Nessun abbinamento trovato tra la colonna 'Assegnato Momentaneamente a' delle Tessere e i Nominativi nell'Anagrafica.")
 
                                 except Exception as e_pop:
                                     st.error(f"Errore durante l'aggiornamento automatico della matrice: {e_pop}")

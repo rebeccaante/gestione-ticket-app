@@ -31,7 +31,7 @@ st.sidebar.title("📌 Menu Navigazione")
 ruolo = st.sidebar.radio(
     "Seleziona Sezione:",
     [
-        "Dipendente - Nuova Richiesta",
+        "Nuova Richiesta",
         "HR - Gestione Richieste",
         "HR - Magazzino & Ordini",
     ],

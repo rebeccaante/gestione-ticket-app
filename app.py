@@ -508,9 +508,10 @@ elif ruolo == "HR - Magazzino & Ordini":
         ultimo_residuo_suggerito = 0
         if not df_ord.empty:
             last_order = df_ord.iloc[-1]
-            erogati_last = df_rich[df_rich["ordine_id"] == last_order["id"]]["num_ticket"].sum() if not df_rich.empty else 0
+            erogati_last_rich = df_rich[df_rich["ordine_id"] == last_order["id"]]["num_ticket"].sum() if not df_rich.empty else 0
+            erogati_last_init = last_order.get("ticket_erogati_iniziali", 0) or 0
             res_prec_last = last_order.get("residuo_precedente", 0) or 0
-            ultimo_residuo_suggerito = max(0, (last_order["quantita_acquistata"] - erogati_last) + res_prec_last)
+            ultimo_residuo_suggerito = max(0, (last_order["quantita_acquistata"] - (erogati_last_rich + erogati_last_init)) + res_prec_last)
 
         with st.expander("➕ Registra Nuova Fattura / Ordine Ticket"):
             with st.form("form_ordine"):
@@ -530,15 +531,15 @@ elif ruolo == "HR - Magazzino & Ordini":
                 if st.form_submit_button("Salva Ordine"):
                     if num_fat:
                         quantita_residua_calcolata = (qta - ticket_erogati_input) + res_prec
-                        supabase.table("ordini").insert(
-                            {
-                                "numero_fattura": num_fat,
-                                "valore_unitario": val_uni,
-                                "quantita_acquistata": qta,
-                                "quantita_residua": quantita_residua_calcolata,
-                                "residuo_precedente": res_prec,
-                            }
-                        ).execute()
+                        payload_ord = {
+                            "numero_fattura": num_fat,
+                            "valore_unitario": val_uni,
+                            "quantita_acquistata": qta,
+                            "quantita_residua": quantita_residua_calcolata,
+                            "residuo_precedente": res_prec,
+                            "ticket_erogati_iniziali": ticket_erogati_input
+                        }
+                        supabase.table("ordini").insert(payload_ord).execute()
                         st.success("Ordine salvato con successo!")
                         st.rerun()
                     else:
@@ -550,13 +551,15 @@ elif ruolo == "HR - Magazzino & Ordini":
             ordini_calcolati = []
             for idx, row_ord in df_ord.iterrows():
                 if not df_rich.empty and "ordine_id" in df_rich.columns:
-                    erogati_sistema = df_rich[df_rich["ordine_id"] == row_ord["id"]]["num_ticket"].sum()
+                    erogati_richieste = df_rich[df_rich["ordine_id"] == row_ord["id"]]["num_ticket"].sum()
                 else:
-                    erogati_sistema = 0
+                    erogati_richieste = 0
+
+                erogati_iniziali = row_ord.get("ticket_erogati_iniziali", 0) or 0
+                erogati_totali = erogati_richieste + erogati_iniziali
 
                 acquistati = row_ord["quantita_acquistata"]
                 residuo_prec = row_ord.get("residuo_precedente", 0) or 0
-                erogati_totali = erogati_sistema
                 residui_totali = (acquistati - erogati_totali) + residuo_prec
 
                 ordini_calcolati.append({
@@ -627,6 +630,7 @@ elif ruolo == "HR - Magazzino & Ordini":
                     edit_fat = st.text_input("Numero Fattura / Ordine", value=str(row_selected["numero_fattura"]))
                     edit_val = st.number_input("Valore Singolo Ticket (€)", value=float(row_selected["valore_unitario"]), step=0.10)
                     edit_qta = st.number_input("Quantità Ticket Acquistati", value=int(row_selected["quantita_acquistata"]), step=100)
+                    edit_erog = st.number_input("Ticket Erogati Iniziali", value=int(row_selected.get("ticket_erogati_iniziali", 0) or 0), step=1)
                     edit_res = st.number_input("Residuo Ordine Precedente", value=int(row_selected.get("residuo_precedente", 0) or 0), step=1)
 
                     if st.form_submit_button("💾 Salva Modifiche Ordine"):
@@ -635,6 +639,7 @@ elif ruolo == "HR - Magazzino & Ordini":
                                 "numero_fattura": edit_fat,
                                 "valore_unitario": edit_val,
                                 "quantita_acquistata": edit_qta,
+                                "ticket_erogati_iniziali": edit_erog,
                                 "residuo_precedente": edit_res
                             }).eq("id", ord_sel_id).execute()
                             st.success("✅ Ordine aggiornato con successo!")

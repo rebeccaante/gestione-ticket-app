@@ -238,3 +238,77 @@ elif ruolo == "HR - Gestione Richieste":
                 tessere_totali.sort()
 
                 for t_num in tessere_totali:
+                    if not df_db.empty and t_num in df_db["numero_tessera"].values:
+                        r = df_db[df_db["numero_tessera"] == t_num].iloc[0].to_dict()
+                    else:
+                        r = {"numero_tessera": t_num, "assegnato_a": "", "anno": anno_sel}
+                        for m in MESI_TUTTI:
+                            r[m] = 0
+                    rows_data.append(r)
+
+                df_grid = pd.DataFrame(rows_data)
+
+                cols_order = ["numero_tessera", "assegnato_a"] + mesi_visibili
+                df_grid = df_grid[cols_order]
+
+                rename_dict = {
+                    "numero_tessera": "N° Tessera",
+                    "assegnato_a": "Assegnato Momentaneamente a",
+                }
+                for m in mesi_visibili:
+                    rename_dict[m] = m.capitalize()
+
+                df_display = df_grid.rename(columns=rename_dict)
+
+                st.info("💡 Inserisci o modifica i dati nelle celle e salva.")
+
+                edited_df = st.data_editor(
+                    df_display,
+                    use_container_width=True,
+                    disabled=["N° Tessera"],
+                    num_rows="dynamic",
+                    key=f"editor_tessere_{anno_sel}"
+                )
+
+                if st.button("💾 Salva Modifiche Tabella Tessere", type="primary"):
+                    try:
+                        for _, row in edited_df.iterrows():
+                            t_num = row["N° Tessera"]
+                            ass_a = row["Assegnato Momentaneamente a"]
+                            
+                            update_payload = {
+                                "numero_tessera": t_num,
+                                "assegnato_a": ass_a if pd.notna(ass_a) else "",
+                                "anno": anno_sel,
+                            }
+                            for m in mesi_visibili:
+                                val_m = row[m.capitalize()]
+                                update_payload[m] = int(val_m) if pd.notna(val_m) else 0
+
+                            supabase.table("matrice_tessere").upsert(
+                                update_payload, on_conflict="numero_tessera,anno"
+                            ).execute()
+
+                        st.success("✅ Tabelle salvate con successo!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Errore durante il salvataggio: {e}")
+
+                # Totali
+                st.markdown("---")
+                tot_ticket_anno = 0
+                for m in mesi_visibili:
+                    col_cap = m.capitalize()
+                    if col_cap in edited_df.columns:
+                        tot_ticket_anno += edited_df[col_cap].fillna(0).sum()
+
+                tot_valore_anno = tot_ticket_anno * 5.20
+
+                col_m1, col_m2 = st.columns(2)
+                col_m1.metric(f"Totale Ticket Caricati ({anno_sel})", f"{int(tot_ticket_anno)} ticket")
+                col_m2.metric(f"Valore Economico Totale ({anno_sel})", f"€ {tot_valore_anno:.2f}")
+
+            # SUB-TAB B: UPLOAD & CALCOLO LIBRO PRESENZE
+            with sub_tab_b:
+                st.markdown("### 📄 Upload Libro Presenze Mensile")
+                st.markdown("Carica il file Excel o CSV del Libro Presenze. Verranno cont

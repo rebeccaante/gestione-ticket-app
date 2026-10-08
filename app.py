@@ -106,9 +106,9 @@ if ruolo == "Nuova Richiesta":
                     data = {
                         "email": email,
                         "nome_cognome": nome_cognome,
-                        "anno": anno,
+                        "anno": int(anno),
                         "mese": mese,
-                        "num_ticket": num_ticket,
+                        "num_ticket": int(num_ticket),
                         "file_url": file_url,
                         "stato": "In lavorazione",
                     }
@@ -180,12 +180,16 @@ elif ruolo == "HR - Gestione Richieste":
                                 if st.button("Segna come PRONTI 🚀", key=f"btn_{row['id']}"):
                                     ord_data = df_ordini[df_ordini["numero_fattura"] == ord_sel].iloc[0]
 
+                                    # Conversione esplicita degli ID a int di Python per evitare errori di serializzazione JSON
+                                    req_id = int(row["id"])
+                                    ordine_id = int(ord_data["id"])
+
                                     supabase.table("richieste").update(
                                         {
                                             "stato": "Pronti",
-                                            "ordine_id": ord_data["id"],
+                                            "ordine_id": ordine_id,
                                         }
-                                    ).eq("id", row["id"]).execute()
+                                    ).eq("id", req_id).execute()
 
                                     st.success("Stato aggiornato a PRONTI!")
                                     st.rerun()
@@ -218,7 +222,7 @@ elif ruolo == "HR - Gestione Richieste":
                                     payload_new = {
                                         "numero_tessera": nuovo_num_tess,
                                         "assegnato_a": nuovo_ass,
-                                        "anno": anno_sel
+                                        "anno": int(anno_sel)
                                     }
                                     for m in MESI_TUTTI:
                                         payload_new[m] = 0
@@ -228,7 +232,7 @@ elif ruolo == "HR - Gestione Richieste":
 
                 mesi_visibili = MESI_2026 if anno_sel == 2026 else MESI_TUTTI
 
-                res_matrice = supabase.table("matrice_tessere").select("*").eq("anno", anno_sel).execute()
+                res_matrice = supabase.table("matrice_tessere").select("*").eq("anno", int(anno_sel)).execute()
                 df_db = pd.DataFrame(res_matrice.data) if res_matrice.data else pd.DataFrame()
 
                 tessere_base = [f"008000{i:02d}" for i in range(1, 31)]
@@ -241,7 +245,7 @@ elif ruolo == "HR - Gestione Richieste":
                     if not df_db.empty and t_num in df_db["numero_tessera"].values:
                         r = df_db[df_db["numero_tessera"] == t_num].iloc[0].to_dict()
                     else:
-                        r = {"numero_tessera": t_num, "assegnato_a": "", "anno": anno_sel}
+                        r = {"numero_tessera": t_num, "assegnato_a": "", "anno": int(anno_sel)}
                         for m in MESI_TUTTI:
                             r[m] = 0
                     rows_data.append(r)
@@ -277,9 +281,9 @@ elif ruolo == "HR - Gestione Richieste":
                             ass_a = row["Assegnato Momentaneamente a"]
                             
                             update_payload = {
-                                "numero_tessera": t_num,
+                                "numero_tessera": str(t_num),
                                 "assegnato_a": ass_a if pd.notna(ass_a) else "",
-                                "anno": anno_sel,
+                                "anno": int(anno_sel),
                             }
                             for m in mesi_visibili:
                                 val_m = row[m.capitalize()]
@@ -405,7 +409,7 @@ elif ruolo == "HR - Gestione Richieste":
 
                             if st.button(f"⚡ Applica e Popola Matrice Tessere ({m_presenza.capitalize()} {a_presenza})", type="primary"):
                                 try:
-                                    res_mat = supabase.table("matrice_tessere").select("*").eq("anno", a_presenza).execute()
+                                    res_mat = supabase.table("matrice_tessere").select("*").eq("anno", int(a_presenza)).execute()
                                     df_mat_db = pd.DataFrame(res_mat.data) if res_mat.data else pd.DataFrame()
 
                                     aggiornati_cnt = 0
@@ -422,12 +426,12 @@ elif ruolo == "HR - Gestione Richieste":
                                             
                                             if not match_tess.empty:
                                                 tess_row = match_tess.iloc[0]
-                                                t_num = tess_row["numero_tessera"]
+                                                t_num = str(tess_row["numero_tessera"])
 
                                                 update_dict = {
                                                     "numero_tessera": t_num,
-                                                    "anno": a_presenza,
-                                                    "assegnato_a": tess_row["assegnato_a"],
+                                                    "anno": int(a_presenza),
+                                                    "assegnato_a": str(tess_row["assegnato_a"]),
                                                     m_presenza.lower(): n_ticket_c
                                                 }
 
@@ -464,8 +468,8 @@ elif ruolo == "HR - Gestione Richieste":
                         if nuovo_nome:
                             supabase.table("regole_dipendenti").upsert({
                                 "nome_cognome": nuovo_nome.strip(),
-                                "ha_diritto": ha_diritto_input,
-                                "note": note_dip
+                                "ha_diritto": bool(ha_diritto_input),
+                                "note": str(note_dip)
                             }, on_conflict="nome_cognome").execute()
                             st.success(f"Dipendente '{nuovo_nome}' registrato!")
                             st.rerun()
@@ -509,9 +513,8 @@ elif ruolo == "HR - Magazzino & Ordini":
         if not df_ord.empty:
             last_order = df_ord.iloc[-1]
             erogati_last_rich = df_rich[df_rich["ordine_id"] == last_order["id"]]["num_ticket"].sum() if not df_rich.empty else 0
-            erogati_last_init = last_order.get("ticket_erogati_iniziali", 0) or 0
             res_prec_last = last_order.get("residuo_precedente", 0) or 0
-            ultimo_residuo_suggerito = max(0, (last_order["quantita_acquistata"] - (erogati_last_rich + erogati_last_init)) + res_prec_last)
+            ultimo_residuo_suggerito = max(0, (last_order["quantita_acquistata"] - erogati_last_rich) + res_prec_last)
 
         with st.expander("➕ Registra Nuova Fattura / Ordine Ticket"):
             with st.form("form_ordine"):
@@ -530,14 +533,13 @@ elif ruolo == "HR - Magazzino & Ordini":
 
                 if st.form_submit_button("Salva Ordine"):
                     if num_fat:
-                        quantita_residua_calcolata = (qta - ticket_erogati_input) + res_prec
+                        quantita_residua_calcolata = (int(qta) - int(ticket_erogati_input)) + int(res_prec)
                         payload_ord = {
-                            "numero_fattura": num_fat,
-                            "valore_unitario": val_uni,
-                            "quantita_acquistata": qta,
-                            "quantita_residua": quantita_residua_calcolata,
-                            "residuo_precedente": res_prec,
-                            "ticket_erogati_iniziali": ticket_erogati_input
+                            "numero_fattura": str(num_fat),
+                            "valore_unitario": float(val_uni),
+                            "quantita_acquistata": int(qta),
+                            "quantita_residua": int(quantita_residua_calcolata),
+                            "residuo_precedente": int(res_prec),
                         }
                         supabase.table("ordini").insert(payload_ord).execute()
                         st.success("Ordine salvato con successo!")
@@ -555,17 +557,24 @@ elif ruolo == "HR - Magazzino & Ordini":
                 else:
                     erogati_richieste = 0
 
-                erogati_iniziali = row_ord.get("ticket_erogati_iniziali", 0) or 0
-                erogati_totali = erogati_richieste + erogati_iniziali
+                acquistati = int(row_ord["quantita_acquistata"])
+                residuo_prec = int(row_ord.get("residuo_precedente", 0) or 0)
+                
+                qta_residua_db = row_ord.get("quantita_residua", acquistati + residuo_prec)
+                if qta_residua_db is None:
+                    qta_residua_db = acquistati + residuo_prec
+                else:
+                    qta_residua_db = int(qta_residua_db)
 
-                acquistati = row_ord["quantita_acquistata"]
-                residuo_prec = row_ord.get("residuo_precedente", 0) or 0
-                residui_totali = (acquistati - erogati_totali) + residuo_prec
+                erogati_manuali = max(0, (acquistati + residuo_prec) - qta_residua_db)
+                erogati_totali = int(erogati_richieste + erogati_manuali)
+                
+                residui_totali = max(0, (acquistati - erogati_totali) + residuo_prec)
 
                 ordini_calcolati.append({
-                    "ID": row_ord["id"],
-                    "Fattura/Ordine": row_ord["numero_fattura"],
-                    "Valore Unitario": f"€ {row_ord['valore_unitario']:.2f}",
+                    "ID": int(row_ord["id"]),
+                    "Fattura/Ordine": str(row_ord["numero_fattura"]),
+                    "Valore Unitario": f"€ {float(row_ord['valore_unitario']):.2f}",
                     "Ticket Acquistati": acquistati,
                     "Ticket Erogati": erogati_totali,
                     "Residuo Ordine Precedente": residuo_prec,
@@ -617,7 +626,7 @@ elif ruolo == "HR - Magazzino & Ordini":
 
             ord_sel_id = st.selectbox(
                 "Seleziona l'ordine da gestire o eliminare:",
-                options=df_ord["id"].tolist(),
+                options=[int(i) for i in df_ord["id"].tolist()],
                 format_func=lambda x: f"Fattura/Ordine: {df_ord[df_ord['id']==x]['numero_fattura'].values[0]}"
             )
 
@@ -630,18 +639,28 @@ elif ruolo == "HR - Magazzino & Ordini":
                     edit_fat = st.text_input("Numero Fattura / Ordine", value=str(row_selected["numero_fattura"]))
                     edit_val = st.number_input("Valore Singolo Ticket (€)", value=float(row_selected["valore_unitario"]), step=0.10)
                     edit_qta = st.number_input("Quantità Ticket Acquistati", value=int(row_selected["quantita_acquistata"]), step=100)
-                    edit_erog = st.number_input("Ticket Erogati Iniziali", value=int(row_selected.get("ticket_erogati_iniziali", 0) or 0), step=1)
-                    edit_res = st.number_input("Residuo Ordine Precedente", value=int(row_selected.get("residuo_precedente", 0) or 0), step=1)
+                    
+                    res_prec_curr = int(row_selected.get("residuo_precedente", 0) or 0)
+                    qta_res_curr = row_selected.get("quantita_residua", edit_qta + res_prec_curr)
+                    if qta_res_curr is None:
+                        qta_res_curr = edit_qta + res_prec_curr
+                    else:
+                        qta_res_curr = int(qta_res_curr)
+                    erog_curr = max(0, (edit_qta + res_prec_curr) - qta_res_curr)
+
+                    edit_erog = st.number_input("Ticket Erogati Iniziali", value=int(erog_curr), step=1)
+                    edit_res = st.number_input("Residuo Ordine Precedente", value=res_prec_curr, step=1)
 
                     if st.form_submit_button("💾 Salva Modifiche Ordine"):
                         try:
+                            qta_res_nuova = (int(edit_qta) - int(edit_erog)) + int(edit_res)
                             supabase.table("ordini").update({
-                                "numero_fattura": edit_fat,
-                                "valore_unitario": edit_val,
-                                "quantita_acquistata": edit_qta,
-                                "ticket_erogati_iniziali": edit_erog,
-                                "residuo_precedente": edit_res
-                            }).eq("id", ord_sel_id).execute()
+                                "numero_fattura": str(edit_fat),
+                                "valore_unitario": float(edit_val),
+                                "quantita_acquistata": int(edit_qta),
+                                "quantita_residua": int(qta_res_nuova),
+                                "residuo_precedente": int(edit_res)
+                            }).eq("id", int(ord_sel_id)).execute()
                             st.success("✅ Ordine aggiornato con successo!")
                             st.rerun()
                         except Exception as e:
@@ -651,8 +670,8 @@ elif ruolo == "HR - Magazzino & Ordini":
                 st.warning("⚠️ L'eliminazione dell'ordine scollegherà eventuali richieste erogate associate.")
                 if st.button("🗑️ Conferma ed Elimina Ordine", type="primary", key=f"btn_del_{ord_sel_id}"):
                     try:
-                        supabase.table("richieste").update({"ordine_id": None}).eq("ordine_id", ord_sel_id).execute()
-                        supabase.table("ordini").delete().eq("id", ord_sel_id).execute()
+                        supabase.table("richieste").update({"ordine_id": None}).eq("ordine_id", int(ord_sel_id)).execute()
+                        supabase.table("ordini").delete().eq("id", int(ord_sel_id)).execute()
                         st.success("✅ Ordine eliminato con successo!")
                         st.rerun()
                     except Exception as e:

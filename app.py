@@ -17,6 +17,9 @@ PASSWORD_HR = "HR2026!"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Anni disponibili (dal 2026 al 2060)
+ANNI_DISPONIBILI = list(range(2026, 2061))
+
 # Mesi per ciascun anno
 MESI_2026 = ["ottobre", "novembre", "dicembre"]
 MESI_TUTTI = [
@@ -64,7 +67,7 @@ if ruolo == "Nuova Richiesta":
         with c1:
             email = st.text_input("Email aziendale *")
             nome_cognome = st.text_input("Cognome e Nome *")
-            anno = st.selectbox("Anno *", [2026, 2027, 2028])
+            anno = st.selectbox("Anno *", ANNI_DISPONIBILI)
         with c2:
             mese = st.selectbox(
                 "Mese *",
@@ -91,7 +94,6 @@ if ruolo == "Nuova Richiesta":
                     file_bytes = allegato.read()
                     file_name = f"{nome_cognome.replace(' ', '_')}_{allegato.name}"
 
-                    # Usa moduli.firmati se su Supabase si chiama con il punto
                     supabase.storage.from_("moduli.firmati").upload(
                         file_name,
                         file_bytes,
@@ -203,7 +205,7 @@ elif ruolo == "HR - Gestione Richieste":
             with sub_tab_a:
                 c_anno, c_add_tess = st.columns([2, 3])
                 with c_anno:
-                    anno_sel = st.selectbox("Seleziona Anno di Riferimento:", [2026, 2027, 2028], index=0)
+                    anno_sel = st.selectbox("Seleziona Anno di Riferimento:", ANNI_DISPONIBILI, index=0)
 
                 with c_add_tess:
                     with st.expander("➕ Aggiungi Nuova Tessera Digital"):
@@ -315,7 +317,7 @@ elif ruolo == "HR - Gestione Richieste":
                 with col_u1:
                     m_presenza = st.selectbox("Mese Presenze:", MESI_TUTTI, index=9)
                 with col_u2:
-                    a_presenza = st.selectbox("Anno Presenze:", [2026, 2027, 2028], index=0)
+                    a_presenza = st.selectbox("Anno Presenze:", ANNI_DISPONIBILI, index=0)
 
                 file_presenze = st.file_uploader("Carica Libro Presenze (Excel o CSV)", type=["xlsx", "xls", "csv"])
 
@@ -390,4 +392,140 @@ elif ruolo == "HR - Gestione Richieste":
                     c_n1, c_n2 = st.columns([3, 1])
                     with c_n1:
                         nuovo_nome = st.text_input("Cognome e Nome Dipendente *")
-                    with
+                    with c_n2:
+                        ha_diritto_input = st.checkbox("Ha Diritto ai Ticket", value=True)
+                    
+                    note_dip = st.text_input("Note (opzionale)")
+                    if st.form_submit_button("Aggiungi / Aggiorna Dipendente"):
+                        if nuovo_nome:
+                            supabase.table("regole_dipendenti").upsert({
+                                "nome_cognome": nuovo_nome.strip(),
+                                "ha_diritto": ha_diritto_input,
+                                "note": note_dip
+                            }, on_conflict="nome_cognome").execute()
+                            st.success(f"Dipendente '{nuovo_nome}' registrato!")
+                            st.rerun()
+                        else:
+                            st.error("Inserisci il nome e cognome.")
+
+                res_dip = supabase.table("regole_dipendenti").select("*").order("nome_cognome").execute()
+                if res_dip.data:
+                    df_dip = pd.DataFrame(res_dip.data)
+                    st.markdown("#### Lista Dipendenti Registrati")
+                    st.dataframe(
+                        df_dip[["nome_cognome", "ha_diritto", "note"]].rename(columns={
+                            "nome_cognome": "Cognome e Nome",
+                            "ha_diritto": "Avente Diritto Ticket",
+                            "note": "Note"
+                        }),
+                        use_container_width=True
+                    )
+
+                    with st.expander("🗑️ Rimuovi Dipendente dall'Anagrafica"):
+                        dip_del = st.selectbox("Seleziona Dipendente da Rimuovere:", df_dip["nome_cognome"].tolist())
+                        if st.button("Rimuovi Dipendente", type="primary"):
+                            supabase.table("regole_dipendenti").delete().eq("nome_cognome", dip_del).execute()
+                            st.success("Dipendente rimosso dall'anagrafica.")
+                            st.rerun()
+
+# -----------------------------------------------------------------------------
+# 3. PORTALE HR: MAGAZZINO E ORDINI
+# -----------------------------------------------------------------------------
+elif ruolo == "HR - Magazzino & Ordini":
+    if verifica_accesso_hr():
+        st.title("📦 Magazzino Ticket & Tracciamento Ordini")
+
+        res_ordini = supabase.table("ordini").select("*").order("created_at", desc=False).execute()
+        res_richieste = supabase.table("richieste").select("*").eq("stato", "Pronti").execute()
+
+        df_ord = pd.DataFrame(res_ordini.data) if res_ordini.data else pd.DataFrame()
+        df_rich = pd.DataFrame(res_richieste.data) if res_richieste.data else pd.DataFrame()
+
+        ultimo_residuo_suggerito = 0
+        if not df_ord.empty:
+            last_order = df_ord.iloc[-1]
+            erogati_last = df_rich[df_rich["ordine_id"] == last_order["id"]]["num_ticket"].sum() if not df_rich.empty else 0
+            res_prec_last = last_order.get("residuo_precedente", 0) or 0
+            ultimo_residuo_suggerito = max(0, (last_order["quantita_acquistata"] - erogati_last) + res_prec_last)
+
+        with st.expander("➕ Registra Nuova Fattura / Ordine Ticket"):
+            with st.form("form_ordine"):
+                num_fat = st.text_input("Numero Fattura / Ordine *")
+                val_uni = st.number_input("Valore Singolo Ticket (€) *", value=5.20, step=0.10)
+                qta = st.number_input("Quantità Ticket Acquistati *", min_value=1, value=2000, step=100)
+                res_prec = st.number_input(
+                    "Residuo Ordine Precedente", 
+                    value=int(ultimo_residuo_suggerito), 
+                    step=1
+                )
+
+                if st.form_submit_button("Salva Ordine"):
+                    if num_fat:
+                        supabase.table("ordini").insert(
+                            {
+                                "numero_fattura": num_fat,
+                                "valore_unitario": val_uni,
+                                "quantita_acquistata": qta,
+                                "quantita_residua": qta,
+                                "residuo_precedente": res_prec,
+                            }
+                        ).execute()
+                        st.success("Ordine salvato con successo!")
+                        st.rerun()
+                    else:
+                        st.error("Inserisci il numero di fattura o ordine.")
+
+        if not df_ord.empty:
+            st.subheader("📋 Riepilogo Ordini & Giacenza Ticket")
+
+            ordini_calcolati = []
+            for idx, row_ord in df_ord.iterrows():
+                if not df_rich.empty and "ordine_id" in df_rich.columns:
+                    erogati = df_rich[df_rich["ordine_id"] == row_ord["id"]]["num_ticket"].sum()
+                else:
+                    erogati = 0
+
+                acquistati = row_ord["quantita_acquistata"]
+                residuo_prec = row_ord.get("residuo_precedente", 0) or 0
+                residui_totali = (acquistati - erogati) + residuo_prec
+
+                ordini_calcolati.append({
+                    "ID": row_ord["id"],
+                    "Fattura/Ordine": row_ord["numero_fattura"],
+                    "Valore Unitario": f"€ {row_ord['valore_unitario']:.2f}",
+                    "Ticket Acquistati": acquistati,
+                    "Ticket Erogati": erogati,
+                    "Residuo Ordine Precedente": residuo_prec,
+                    "Ticket Residui TOT": residui_totali
+                })
+
+            df_display = pd.DataFrame(ordini_calcolati)
+
+            st.dataframe(
+                df_display.drop(columns=["ID"]),
+                use_container_width=True
+            )
+
+            st.markdown("---")
+            st.subheader("⚙️ Gestione & Eliminazione Ordini di Prova")
+            
+            c_sel, c_btn = st.columns([3, 1])
+            with c_sel:
+                ordine_da_eliminare = st.selectbox(
+                    "Seleziona l'ordine da eliminare:",
+                    options=df_display["ID"].tolist(),
+                    format_func=lambda x: f"Fattura/Ordine: {df_display[df_display['ID']==x]['Fattura/Ordine'].values[0]}"
+                )
+            with c_btn:
+                st.write("")
+                st.write("")
+                if st.button("🗑️ Elimina Ordine", type="primary"):
+                    try:
+                        supabase.table("richieste").update({"ordine_id": None}).eq("ordine_id", ordine_da_eliminare).execute()
+                        supabase.table("ordini").delete().eq("id", ordine_da_eliminare).execute()
+                        st.success("Ordine eliminato!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Errore durante l'eliminazione: {e}")
+        else:
+            st.info("Nessun ordine registrato nel magazzino.")

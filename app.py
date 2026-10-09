@@ -14,7 +14,7 @@ st.set_page_config(
 SUPABASE_URL = "https://mvdcrqmgjtqtllnexdwb.supabase.co"
 SUPABASE_KEY = "sb_publishable_BzXfnuLH_bur-gQFf77keQ_RTbUSiOo"
 
-PASSWORD_HR = "HR2026!"
+PASSWORD_HR = "pallinerosa26!"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 

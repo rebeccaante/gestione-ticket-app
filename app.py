@@ -1,7 +1,7 @@
+import io
 import pandas as pd
 import streamlit as st
 from supabase import create_client
-import io
 
 # Configurazione Pagina
 st.set_page_config(
@@ -24,8 +24,18 @@ ANNI_DISPONIBILI = list(range(2026, 2061))
 # Mesi per ciascun anno
 MESI_2026 = ["ottobre", "novembre", "dicembre"]
 MESI_TUTTI = [
-    "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
-    "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"
+    "gennaio",
+    "febbraio",
+    "marzo",
+    "aprile",
+    "maggio",
+    "giugno",
+    "luglio",
+    "agosto",
+    "settembre",
+    "ottobre",
+    "novembre",
+    "dicembre",
 ]
 
 # -----------------------------------------------------------------------------
@@ -41,6 +51,7 @@ ruolo = st.sidebar.radio(
     ],
 )
 
+
 def verifica_accesso_hr():
     st.sidebar.markdown("---")
     st.sidebar.subheader("🔒 Area Riservata HR")
@@ -53,15 +64,22 @@ def verifica_accesso_hr():
         st.sidebar.error("❌ Password errata")
         return False
     else:
-        st.info("🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.")
+        st.info(
+            "🔒 Inserisci la password HR nella barra laterale per accedere a"
+            " questa sezione."
+        )
         return False
+
 
 # -----------------------------------------------------------------------------
 # 1. PORTALE RICHIESTE
 # -----------------------------------------------------------------------------
 if ruolo == "Nuova Richiesta":
     st.title("🎟️ Richiesta Ticket Buoni Pasto")
-    st.markdown("Compila i campi sottostanti e carica la foto o il PDF del modulo firmato.")
+    st.markdown(
+        "Compila i campi sottostanti e carica la foto o il PDF del modulo"
+        " firmato."
+    )
 
     with st.form("form_richiesta", clear_on_submit=True):
         c1, c2 = st.columns(2)
@@ -73,8 +91,18 @@ if ruolo == "Nuova Richiesta":
             mese = st.selectbox(
                 "Mese *",
                 [
-                    "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-                    "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+                    "Gennaio",
+                    "Febbraio",
+                    "Marzo",
+                    "Aprile",
+                    "Maggio",
+                    "Giugno",
+                    "Luglio",
+                    "Agosto",
+                    "Settembre",
+                    "Ottobre",
+                    "Novembre",
+                    "Dicembre",
                 ],
             )
             num_ticket = st.number_input(
@@ -89,11 +117,16 @@ if ruolo == "Nuova Richiesta":
 
         if submitted:
             if not email or not nome_cognome or not allegato:
-                st.error("Tutti i campi e l'allegato del modulo firmato sono obbligatori.")
+                st.error(
+                    "Tutti i campi e l'allegato del modulo firmato sono"
+                    " obbligatori."
+                )
             else:
                 try:
                     file_bytes = allegato.read()
-                    file_name = f"{nome_cognome.replace(' ', '_')}_{allegato.name}"
+                    file_name = (
+                        f"{nome_cognome.replace(' ', '_')}_{allegato.name}"
+                    )
 
                     supabase.storage.from_("moduli.firmati").upload(
                         file_name,
@@ -101,7 +134,11 @@ if ruolo == "Nuova Richiesta":
                         file_options={"content-type": allegato.type},
                     )
 
-                    file_url = supabase.storage.from_("moduli.firmati").get_public_url(file_name)
+                    file_url = (
+                        supabase.storage.from_("moduli.firmati").get_public_url(
+                            file_name
+                        )
+                    )
 
                     data = {
                         "email": email,
@@ -124,15 +161,31 @@ elif ruolo == "HR - Gestione Richieste":
     if verifica_accesso_hr():
         st.title("📋 Dashboard Gestione Richieste (HR)")
 
-        tab1, tab2 = st.tabs(["📑 Richieste Moduli Cartacei/PDF", "💳 Ticket Digitali (Tessere)"])
+        tab1, tab2 = st.tabs([
+            "📑 Richieste Moduli Cartacei/PDF",
+            "💳 Ticket Digitali (Tessere)",
+        ])
 
         # SUB-TAB 1: RICHIESTE STANDARD
         with tab1:
             richieste_res = supabase.table("richieste").select("*").execute()
-            ordini_res = supabase.table("ordini").select("*").order("created_at", desc=True).execute()
+            ordini_res = (
+                supabase.table("ordini")
+                .select("*")
+                .order("created_at", desc=True)
+                .execute()
+            )
 
-            df_req = pd.DataFrame(richieste_res.data) if richieste_res.data else pd.DataFrame()
-            df_ordini = pd.DataFrame(ordini_res.data) if ordini_res.data else pd.DataFrame()
+            df_req = (
+                pd.DataFrame(richieste_res.data)
+                if richieste_res.data
+                else pd.DataFrame()
+            )
+            df_ordini = (
+                pd.DataFrame(ordini_res.data)
+                if ordini_res.data
+                else pd.DataFrame()
+            )
 
             if df_req.empty:
                 st.info("Nessuna richiesta ricevuta al momento.")
@@ -168,7 +221,9 @@ elif ruolo == "HR - Gestione Richieste":
 
                     col1, col2, col3 = st.columns([2, 3, 1])
                     with col1:
-                        st.link_button("📄 Scarica/Apri Modulo Firmato", row["file_url"])
+                        st.link_button(
+                            "📄 Scarica/Apri Modulo Firmato", row["file_url"]
+                        )
 
                     with col2:
                         if not is_pronto:
@@ -178,27 +233,40 @@ elif ruolo == "HR - Gestione Richieste":
                                     df_ordini["numero_fattura"].tolist(),
                                     key=f"sel_{req_id}",
                                 )
-                                if st.button("Segna come PRONTI 🚀", key=f"btn_{req_id}"):
-                                    ord_data = df_ordini[df_ordini["numero_fattura"] == ord_sel].iloc[0]
+                                if st.button(
+                                    "Segna come PRONTI 🚀", key=f"btn_{req_id}"
+                                ):
+                                    ord_data = df_ordini[
+                                        df_ordini["numero_fattura"] == ord_sel
+                                    ].iloc[0]
                                     ordine_id = int(ord_data["id"])
 
-                                    supabase.table("richieste").update(
-                                        {
-                                            "stato": "Pronti",
-                                            "ordine_id": ordine_id,
-                                        }
-                                    ).eq("id", req_id).execute()
+                                    supabase.table("richieste").update({
+                                        "stato": "Pronti",
+                                        "ordine_id": ordine_id,
+                                    }).eq("id", req_id).execute()
 
                                     st.success("Stato aggiornato a PRONTI!")
                                     st.rerun()
                             else:
-                                st.warning("⚠️ Nessun ordine disponibile in magazzino.")
+                                st.warning(
+                                    "⚠️ Nessun ordine disponibile in"
+                                    " magazzino."
+                                )
 
                     with col3:
                         with st.popover("🗑️ Elimina"):
-                            st.write("Confermi l'eliminazione della richiesta?")
-                            if st.button("🗑️ Conferma Elimina", key=f"del_req_{req_id}", type="primary"):
-                                supabase.table("richieste").delete().eq("id", req_id).execute()
+                            st.write(
+                                "Confermi l'eliminazione della richiesta?"
+                            )
+                            if st.button(
+                                "🗑️ Conferma Elimina",
+                                key=f"del_req_{req_id}",
+                                type="primary",
+                            ):
+                                supabase.table("richieste").delete().eq(
+                                    "id", req_id
+                                ).execute()
                                 st.success("Richiesta eliminata!")
                                 st.rerun()
 
@@ -207,58 +275,92 @@ elif ruolo == "HR - Gestione Richieste":
             st.subheader("💳 Tracciamento Tessere Digitali & Calcolo Presenze")
 
             sub_tab_a, sub_tab_b, sub_tab_c = st.tabs([
-                "📊 Matrice Tessere Digitali", 
-                "📁 Upload & Storico Libro Presenze", 
-                "👥 Anagrafica Nominativi con Diritto"
+                "📊 Matrice Tessere Digitali",
+                "📁 Upload & Storico Libro Presenze",
+                "👥 Anagrafica Nominativi con Diritto",
             ])
 
             # SUB-TAB A: MATRICE TESSERE
             with sub_tab_a:
                 c_anno, c_add_tess = st.columns([2, 3])
                 with c_anno:
-                    anno_sel = st.selectbox("Seleziona Anno di Riferimento:", ANNI_DISPONIBILI, index=0)
+                    anno_sel = st.selectbox(
+                        "Seleziona Anno di Riferimento:",
+                        ANNI_DISPONIBILI,
+                        index=0,
+                    )
 
                 with c_add_tess:
                     with st.expander("➕ Aggiungi Nuova Tessera Digital"):
                         with st.form("form_nuova_tessera", clear_on_submit=True):
-                            nuovo_num_tess = st.text_input("Numero Nuova Tessera *")
-                            nuovo_ass = st.text_input("Assegnato Momentaneamente a")
+                            nuovo_num_tess = st.text_input(
+                                "Numero Nuova Tessera *"
+                            )
+                            nuovo_ass = st.text_input(
+                                "Assegnato Momentaneamente a"
+                            )
                             if st.form_submit_button("Aggiungi Tessera"):
                                 if nuovo_num_tess:
                                     payload_new = {
                                         "numero_tessera": nuovo_num_tess,
                                         "assegnato_a": nuovo_ass,
-                                        "anno": int(anno_sel)
+                                        "anno": int(anno_sel),
                                     }
                                     for m in MESI_TUTTI:
                                         payload_new[m] = 0
-                                    supabase.table("matrice_tessere").insert(payload_new).execute()
-                                    st.success(f"Tessera {nuovo_num_tess} aggiunta con successo!")
+                                    supabase.table("matrice_tessere").insert(
+                                        payload_new
+                                    ).execute()
+                                    st.success(
+                                        f"Tessera {nuovo_num_tess} aggiunta con"
+                                        " successo!"
+                                    )
                                     st.rerun()
 
                 mesi_visibili = MESI_2026 if anno_sel == 2026 else MESI_TUTTI
 
-                res_matrice = supabase.table("matrice_tessere").select("*").eq("anno", int(anno_sel)).execute()
-                df_db = pd.DataFrame(res_matrice.data) if res_matrice.data else pd.DataFrame()
+                res_matrice = (
+                    supabase.table("matrice_tessere")
+                    .select("*")
+                    .eq("anno", int(anno_sel))
+                    .execute()
+                )
+                df_db = (
+                    pd.DataFrame(res_matrice.data)
+                    if res_matrice.data
+                    else pd.DataFrame()
+                )
 
                 tessere_base = [f"008000{i:02d}" for i in range(1, 31)]
-                tessere_esistenti = df_db["numero_tessera"].tolist() if not df_db.empty else []
+                tessere_esistenti = (
+                    df_db["numero_tessera"].tolist() if not df_db.empty else []
+                )
                 tessere_totali = list(set(tessere_base + tessere_esistenti))
                 tessere_totali.sort()
 
                 rows_data = []
                 for t_num in tessere_totali:
-                    if not df_db.empty and t_num in df_db["numero_tessera"].values:
+                    if (
+                        not df_db.empty
+                        and t_num in df_db["numero_tessera"].values
+                    ):
                         r = df_db[df_db["numero_tessera"] == t_num].iloc[0].to_dict()
                     else:
-                        r = {"numero_tessera": t_num, "assegnato_a": "", "anno": int(anno_sel)}
+                        r = {
+                            "numero_tessera": t_num,
+                            "assegnato_a": "",
+                            "anno": int(anno_sel),
+                        }
                         for m in MESI_TUTTI:
                             r[m] = 0
                     rows_data.append(r)
 
                 df_grid = pd.DataFrame(rows_data)
 
-                cols_order = ["numero_tessera", "assegnato_a"] + mesi_visibili
+                cols_order = [
+                    "numero_tessera",
+                    "assegnato_a",
+                ] + mesi_visibili
                 df_grid = df_grid[cols_order]
 
                 rename_dict = {
@@ -277,15 +379,17 @@ elif ruolo == "HR - Gestione Richieste":
                     use_container_width=True,
                     disabled=["N° Tessera"],
                     num_rows="dynamic",
-                    key=f"editor_tessere_{anno_sel}"
+                    key=f"editor_tessere_{anno_sel}",
                 )
 
-                if st.button("💾 Salva Modifiche Tabella Tessere", type="primary"):
+                if st.button(
+                    "💾 Salva Modifiche Tabella Tessere", type="primary"
+                ):
                     try:
                         for _, row in edited_df.iterrows():
                             t_num = row["N° Tessera"]
                             ass_a = row["Assegnato Momentaneamente a"]
-                            
+
                             update_payload = {
                                 "numero_tessera": str(t_num),
                                 "assegnato_a": ass_a if pd.notna(ass_a) else "",
@@ -293,10 +397,13 @@ elif ruolo == "HR - Gestione Richieste":
                             }
                             for m in mesi_visibili:
                                 val_m = row[m.capitalize()]
-                                update_payload[m] = int(val_m) if pd.notna(val_m) else 0
+                                update_payload[m] = (
+                                    int(val_m) if pd.notna(val_m) else 0
+                                )
 
                             supabase.table("matrice_tessere").upsert(
-                                update_payload, on_conflict="numero_tessera,anno"
+                                update_payload,
+                                on_conflict="numero_tessera,anno",
                             ).execute()
 
                         st.success("✅ Tabelle salvate con successo!")
@@ -315,29 +422,58 @@ elif ruolo == "HR - Gestione Richieste":
                 tot_valore_anno = tot_ticket_anno * 5.20
 
                 col_m1, col_m2 = st.columns(2)
-                col_m1.metric(f"Totale Ticket Caricati ({anno_sel})", f"{int(tot_ticket_anno)} ticket")
-                col_m2.metric(f"Valore Economico Totale ({anno_sel})", f"€ {tot_valore_anno:.2f}")
+                col_m1.metric(
+                    f"Totale Ticket Caricati ({anno_sel})",
+                    f"{int(tot_ticket_anno)} ticket",
+                )
+                col_m2.metric(
+                    f"Valore Economico Totale ({anno_sel})",
+                    f"€ {tot_valore_anno:.2f}",
+                )
 
             # SUB-TAB B: UPLOAD & STORICO LIBRO PRESENZE
             with sub_tab_b:
                 st.markdown("### 📄 Upload & Storico Libro Presenze Mensile")
-                st.markdown("Carica o consulta i file dei Libri Presenze. Vengono elaborati i valori della **colonna AQ** (CONTAVALORI) per le causali **PREORD** e **SMARTW**.")
+                st.markdown(
+                    "Carica o consulta i file dei Libri Presenze. Vengono"
+                    " elaborati i valori della **colonna AQ** (CONTAVALORI) per"
+                    " le causali **PREORD** e **SMARTW**."
+                )
 
                 col_u1, col_u2 = st.columns(2)
                 with col_u1:
-                    m_presenza = st.selectbox("Mese Presenze:", MESI_TUTTI, index=8)
+                    m_presenza = st.selectbox(
+                        "Mese Presenze:", MESI_TUTTI, index=8
+                    )
                 with col_u2:
-                    a_presenza = st.selectbox("Anno Presenze:", ANNI_DISPONIBILI, index=0)
+                    a_presenza = st.selectbox(
+                        "Anno Presenze:", ANNI_DISPONIBILI, index=0
+                    )
 
-                file_presenze = st.file_uploader("Carica Nuovo Libro Presenze (Excel o CSV)", type=["xlsx", "xls", "csv"])
+                file_presenze = st.file_uploader(
+                    "Carica Nuovo Libro Presenze (Excel o CSV)",
+                    type=["xlsx", "xls", "csv"],
+                )
 
                 # FUNZIONE DI ESTRAZIONE PRESENZE
                 def elabora_df_presenze(df_raw, m_pres, a_pres):
-                    res_regole = supabase.table("regole_dipendenti").select("*").eq("ha_diritto", True).execute()
-                    dip_abilitati = [r["nome_cognome"] for r in res_regole.data] if res_regole.data else []
+                    res_regole = (
+                        supabase.table("regole_dipendenti")
+                        .select("*")
+                        .eq("ha_diritto", True)
+                        .execute()
+                    )
+                    dip_abilitati = (
+                        [r["nome_cognome"] for r in res_regole.data]
+                        if res_regole.data
+                        else []
+                    )
 
                     if not dip_abilitati:
-                        st.warning("⚠️ Non ci sono dipendenti abilitati nell'Anagrafica.")
+                        st.warning(
+                            "⚠️ Non ci sono dipendenti abilitati"
+                            " nell'Anagrafica."
+                        )
                         return
 
                     risultati_calcolo = []
@@ -350,32 +486,69 @@ elif ruolo == "HR - Gestione Richieste":
 
                         for idx_row in range(len(df_raw)):
                             row = df_raw.iloc[idx_row]
-                            row_str_vals = [str(val).strip().lower() for val in row.values if pd.notna(val)]
+                            row_str_vals = [
+                                str(val).strip().lower()
+                                for val in row.values
+                                if pd.notna(val)
+                            ]
                             row_text = " ".join(row_str_vals)
 
                             if all(part in row_text for part in parts):
                                 trovato = True
-                                max_search_rows = min(len(df_raw), idx_row + 12)
+                                max_search_rows = min(
+                                    len(df_raw), idx_row + 12
+                                )
 
                                 for r_i in range(idx_row, max_search_rows):
                                     sub_row = df_raw.iloc[r_i]
-                                    sub_row_text = " ".join([str(v).strip().upper() for v in sub_row.values if pd.notna(v)])
+                                    sub_row_text = " ".join([
+                                        str(v).strip().upper()
+                                        for v in sub_row.values
+                                        if pd.notna(v)
+                                    ])
 
-                                    if r_i > idx_row and any(k in sub_row_text.lower() for k in ["matr.", "badge", "cod. dip", "riepilogo totale"]):
+                                    if r_i > idx_row and any(
+                                        k in sub_row_text.lower()
+                                        for k in [
+                                            "matr.",
+                                            "badge",
+                                            "cod. dip",
+                                            "riepilogo totale",
+                                        ]
+                                    ):
                                         break
 
-                                    if "PREORD" in sub_row_text or "SMARTW" in sub_row_text:
+                                    if (
+                                        "PREORD" in sub_row_text
+                                        or "SMARTW" in sub_row_text
+                                    ):
                                         val_aq = None
-                                        if len(sub_row) > idx_colonna_aq and pd.notna(sub_row.iloc[idx_colonna_aq]):
-                                            val_aq = sub_row.iloc[idx_colonna_aq]
+                                        if len(
+                                            sub_row
+                                        ) > idx_colonna_aq and pd.notna(
+                                            sub_row.iloc[idx_colonna_aq]
+                                        ):
+                                            val_aq = sub_row.iloc[
+                                                idx_colonna_aq
+                                            ]
                                         else:
-                                            vals_validi = [v for v in sub_row.values if pd.notna(v)]
+                                            vals_validi = [
+                                                v
+                                                for v in sub_row.values
+                                                if pd.notna(v)
+                                            ]
                                             if vals_validi:
                                                 val_aq = vals_validi[-1]
 
                                         if val_aq is not None:
                                             try:
-                                                val_num = int(float(str(val_aq).replace(',', '.').strip()))
+                                                val_num = int(
+                                                    float(
+                                                        str(val_aq)
+                                                        .replace(",", ".")
+                                                        .strip()
+                                                    )
+                                                )
                                                 totale_giorni_dip += val_num
                                             except ValueError:
                                                 pass
@@ -383,44 +556,88 @@ elif ruolo == "HR - Gestione Richieste":
 
                         risultati_calcolo.append({
                             "Cognome e Nome": dip,
-                            "Presente nel Libro Presenze": "✅ SI" if trovato else "❌ NO / Non Trovato",
-                            "Ticket PREORD + SMARTW (Col. AQ)": totale_giorni_dip,
+                            "Presente nel Libro Presenze": (
+                                "✅ SI" if trovato else "❌ NO / Non Trovato"
+                            ),
+                            "Ticket PREORD + SMARTW (Col. AQ)": (
+                                totale_giorni_dip
+                            ),
                             "N° Ticket Spettanti": totale_giorni_dip,
-                            "Valore Economico (€)": totale_giorni_dip * 5.20
+                            "Valore Economico (€)": totale_giorni_dip * 5.20,
                         })
 
                     df_res_calc = pd.DataFrame(risultati_calcolo)
-                    
+
                     st.markdown("---")
-                    st.markdown(f"### 🧮 Risultati Calcolo Spettanze Ticket ({m_pres.capitalize()} {a_pres})")
+                    st.markdown(
+                        "### 🧮 Risultati Calcolo Spettanze Ticket"
+                        f" ({m_pres.capitalize()} {a_pres})"
+                    )
                     st.dataframe(df_res_calc, use_container_width=True)
 
                     tot_ticket_calc = df_res_calc["N° Ticket Spettanti"].sum()
                     tot_valore_calc = tot_ticket_calc * 5.20
 
                     c_k1, c_k2 = st.columns(2)
-                    c_k1.metric("Totale Ticket Spettanti Mese", f"{tot_ticket_calc} ticket")
-                    c_k2.metric("Valore Economico Totale Mese", f"€ {tot_valore_calc:.2f}")
+                    c_k1.metric(
+                        "Totale Ticket Spettanti Mese",
+                        f"{tot_ticket_calc} ticket",
+                    )
+                    c_k2.metric(
+                        "Valore Economico Totale Mese",
+                        f"€ {tot_valore_calc:.2f}",
+                    )
 
                     st.markdown("---")
-                    st.subheader("⚡ Compilazione Automatica Matrice Tessere Digitali")
-                    if st.button(f"⚡ Applica e Popola Matrice Tessere ({m_pres.capitalize()} {a_pres})", type="primary", key=f"btn_popola_{m_pres}_{a_pres}"):
+                    st.subheader(
+                        "⚡ Compilazione Automatica Matrice Tessere Digitali"
+                    )
+                    if st.button(
+                        "⚡ Applica e Popola Matrice Tessere"
+                        f" ({m_pres.capitalize()} {a_pres})",
+                        type="primary",
+                        key=f"btn_popola_{m_pres}_{a_pres}",
+                    ):
                         try:
-                            res_mat = supabase.table("matrice_tessere").select("*").eq("anno", int(a_pres)).execute()
-                            df_mat_db = pd.DataFrame(res_mat.data) if res_mat.data else pd.DataFrame()
+                            res_mat = (
+                                supabase.table("matrice_tessere")
+                                .select("*")
+                                .eq("anno", int(a_pres))
+                                .execute()
+                            )
+                            df_mat_db = (
+                                pd.DataFrame(res_mat.data)
+                                if res_mat.data
+                                else pd.DataFrame()
+                            )
 
                             aggiornati_cnt = 0
                             for idx_c, row_c in df_res_calc.iterrows():
                                 nome_dip_c = row_c["Cognome e Nome"]
                                 n_ticket_c = int(row_c["N° Ticket Spettanti"])
 
-                                if not df_mat_db.empty and "assegnato_a" in df_mat_db.columns:
-                                    parts_c = nome_dip_c.strip().lower().split()
-                                    
-                                    match_tess = df_mat_db[df_mat_db["assegnato_a"].apply(
-                                        lambda x: all(p in str(x).lower() for p in parts_c) if pd.notna(x) and str(x).strip() != "" else False
-                                    )]
-                                    
+                                if (
+                                    not df_mat_db.empty
+                                    and "assegnato_a" in df_mat_db.columns
+                                ):
+                                    parts_c = (
+                                        nome_dip_c.strip().lower().split()
+                                    )
+
+                                    match_tess = df_mat_db[
+                                        df_mat_db["assegnato_a"].apply(
+                                            lambda x: (
+                                                all(
+                                                    p in str(x).lower()
+                                                    for p in parts_c
+                                                )
+                                                if pd.notna(x)
+                                                and str(x).strip() != ""
+                                                else False
+                                            )
+                                        )
+                                    ]
+
                                     if not match_tess.empty:
                                         tess_row = match_tess.iloc[0]
                                         t_num = str(tess_row["numero_tessera"])
@@ -428,55 +645,89 @@ elif ruolo == "HR - Gestione Richieste":
                                         update_dict = {
                                             "numero_tessera": t_num,
                                             "anno": int(a_pres),
-                                            "assegnato_a": str(tess_row["assegnato_a"]),
-                                            m_pres.lower(): n_ticket_c
+                                            "assegnato_a": str(
+                                                tess_row["assegnato_a"]
+                                            ),
+                                            m_pres.lower(): n_ticket_c,
                                         }
 
-                                        supabase.table("matrice_tessere").upsert(
-                                            update_dict, on_conflict="numero_tessera,anno"
+                                        supabase.table(
+                                            "matrice_tessere"
+                                        ).upsert(
+                                            update_dict,
+                                            on_conflict="numero_tessera,anno",
                                         ).execute()
                                         aggiornati_cnt += 1
 
                             if aggiornati_cnt > 0:
-                                st.success(f"✅ Matrice aggiornata per {aggiornati_cnt} dipendenti/tessere nel mese di {m_pres.capitalize()}!")
+                                st.success(
+                                    f"✅ Matrice aggiornata per {aggiornati_cnt}"
+                                    " dipendenti/tessere nel mese di"
+                                    f" {m_pres.capitalize()}!"
+                                )
                             else:
-                                st.warning("⚠️ Nessun abbinamento trovato con i nominativi nell'Anagrafica.")
+                                st.warning(
+                                    "⚠️ Nessun abbinamento trovato con i"
+                                    " nominativi nell'Anagrafica."
+                                )
 
                         except Exception as e_pop:
-                            st.error(f"Errore durante l'aggiornamento automatico della matrice: {e_pop}")
+                            st.error(
+                                "Errore durante l'aggiornamento automatico della"
+                                f" matrice: {e_pop}"
+                            )
 
                 if file_presenze:
                     try:
                         file_bytes = file_presenze.read()
-                        file_name_storage = f"Presenze_{m_presenza.lower()}_{a_presenza}_{file_presenze.name}"
+                        file_name_storage = (
+                            f"Presenze_{m_presenza.lower()}_{a_presenza}_{file_presenze.name}"
+                        )
 
                         # Upload su Supabase Storage
                         supabase.storage.from_("libri.presenze").upload(
                             file_name_storage,
                             file_bytes,
-                            file_options={"content-type": file_presenze.type, "upsert": "true"},
+                            file_options={
+                                "content-type": file_presenze.type,
+                                "upsert": "true",
+                            },
                         )
-                        file_url = supabase.storage.from_("libri.presenze").get_public_url(file_name_storage)
+                        file_url = (
+                            supabase.storage.from_(
+                                "libri.presenze"
+                            ).get_public_url(file_name_storage)
+                        )
 
                         # Registrazione nello Storico DB
                         supabase.table("storico_presenze").insert({
                             "mese": m_presenza.lower(),
                             "anno": int(a_presenza),
                             "nome_file": file_presenze.name,
-                            "file_url": file_url
+                            "file_url": file_url,
                         }).execute()
 
-                        st.success(f"✅ File salvato nello storico per {m_presenza.capitalize()} {a_presenza}!")
+                        st.success(
+                            "✅ File salvato nello storico per"
+                            f" {m_presenza.capitalize()} {a_presenza}!"
+                        )
 
                         if file_presenze.name.endswith(".csv"):
-                            df_raw = pd.read_csv(io.BytesIO(file_bytes), header=None)
+                            df_raw = pd.read_csv(
+                                io.BytesIO(file_bytes), header=None
+                            )
                         else:
-                            df_raw = pd.read_excel(io.BytesIO(file_bytes), header=None)
+                            df_raw = pd.read_excel(
+                                io.BytesIO(file_bytes), header=None
+                            )
 
                         elabora_df_presenze(df_raw, m_presenza, a_presenza)
 
                     except Exception as e:
-                        st.error(f"Errore nel salvataggio ed elaborazione del file presenze: {e}")
+                        st.error(
+                            "Errore nel salvataggio ed elaborazione del file"
+                            f" presenze: {e}"
+                        )
 
                 # -------------------------------------------------------------
                 # CONSULTAZIONE STORICO LIBRI PRESENZE
@@ -484,91 +735,161 @@ elif ruolo == "HR - Gestione Richieste":
                 st.markdown("---")
                 st.subheader("📚 Archivio e Storico Libri Presenze")
 
-                res_storico = supabase.table("storico_presenze").select("*").order("created_at", desc=True).execute()
-                df_storico = pd.DataFrame(res_storico.data) if res_storico.data else pd.DataFrame()
+                res_storico = (
+                    supabase.table("storico_presenze")
+                    .select("*")
+                    .order("created_at", desc=True)
+                    .execute()
+                )
+                df_storico = (
+                    pd.DataFrame(res_storico.data)
+                    if res_storico.data
+                    else pd.DataFrame()
+                )
 
                 if df_storico.empty:
-                    st.info("Nessun libro presenze ancora salvato nello storico.")
+                    st.info(
+                        "Nessun libro presenze ancora salvato nello storico."
+                    )
                 else:
                     col_st1, col_st2 = st.columns(2)
                     with col_st1:
-                        filtro_st_anno = st.selectbox("Filtra Anno Storico:", ANNI_DISPONIBILI, index=0, key="st_anno")
+                        filtro_st_anno = st.selectbox(
+                            "Filtra Anno Storico:",
+                            ANNI_DISPONIBILI,
+                            index=0,
+                            key="st_anno",
+                        )
                     with col_st2:
-                        filtro_st_mese = st.selectbox("Filtra Mese Storico:", MESI_TUTTI, index=8, key="st_mese")
+                        filtro_st_mese = st.selectbox(
+                            "Filtra Mese Storico:",
+                            MESI_TUTTI,
+                            index=8,
+                            key="st_mese",
+                        )
 
                     match_storico = df_storico[
-                        (df_storico["anno"] == int(filtro_st_anno)) & 
-                        (df_storico["mese"] == filtro_st_mese.lower())
+                        (df_storico["anno"] == int(filtro_st_anno))
+                        & (df_storico["mese"] == filtro_st_mese.lower())
                     ]
 
                     if not match_storico.empty:
                         rec_file = match_storico.iloc[0]
-                        st.success(f"📁 Trovato file salvato per **{filtro_st_mese.capitalize()} {filtro_st_anno}**: `{rec_file['nome_file']}`")
-                        
+                        st.success(
+                            "📁 Trovato file salvato per"
+                            f" **{filtro_st_mese.capitalize()} {filtro_st_anno}**:"
+                            f" `{rec_file['nome_file']}`"
+                        )
+
                         col_d1, col_d2 = st.columns(2)
                         with col_d1:
-                            st.link_button("📥 Scarica File Libro Presenze Originale", rec_file["file_url"])
-                        
+                            st.link_button(
+                                "📥 Scarica File Libro Presenze Originale",
+                                rec_file["file_url"],
+                            )
+
                         with col_d2:
-                            if st.button("🔄 Rianalizza e Ricalcola Presenze da Archiviati"):
+                            if st.button(
+                                "🔄 Rianalizza e Ricalcola Presenze da"
+                                " Archiviati"
+                            ):
                                 try:
                                     import urllib.request
-                                    req = urllib.request.urlopen(rec_file["file_url"])
+
+                                    req = urllib.request.urlopen(
+                                        rec_file["file_url"]
+                                    )
                                     content_bytes = req.read()
 
                                     if rec_file["nome_file"].endswith(".csv"):
-                                        df_arch = pd.read_csv(io.BytesIO(content_bytes), header=None)
+                                        df_arch = pd.read_csv(
+                                            io.BytesIO(content_bytes),
+                                            header=None,
+                                        )
                                     else:
-                                        df_arch = pd.read_excel(io.BytesIO(content_bytes), header=None)
+                                        df_arch = pd.read_excel(
+                                            io.BytesIO(content_bytes),
+                                            header=None,
+                                        )
 
-                                    elabora_df_presenze(df_arch, filtro_st_mese, filtro_st_anno)
+                                    elabora_df_presenze(
+                                        df_arch, filtro_st_mese, filtro_st_anno
+                                    )
                                 except Exception as e_arch:
-                                    st.error(f"Errore nella lettura del file archiviato: {e_arch}")
+                                    st.error(
+                                        "Errore nella lettura del file"
+                                        f" archiviato: {e_arch}"
+                                    )
                     else:
-                        st.warning(f"Nessun libro presenze archiviato per {filtro_st_mese.capitalize()} {filtro_st_anno}.")
+                        st.warning(
+                            "Nessun libro presenze archiviato per"
+                            f" {filtro_st_mese.capitalize()} {filtro_st_anno}."
+                        )
 
             # SUB-TAB C: ANAGRAFICA NOMINATIVI CON DIRITTO
             with sub_tab_c:
                 st.markdown("### 👥 Anagrafica Personale e Gestione Diritto Ticket")
-                st.markdown("Aggiungi o modifica i dipendenti che hanno diritto a **1 ticket per giorno lavorato**.")
+                st.markdown(
+                    "Aggiungi o modifica i dipendenti che hanno diritto a **1"
+                    " ticket per giorno lavorato**."
+                )
 
                 with st.form("form_add_dip", clear_on_submit=True):
                     c_n1, c_n2 = st.columns([3, 1])
                     with c_n1:
                         nuovo_nome = st.text_input("Cognome e Nome Dipendente *")
                     with c_n2:
-                        ha_diritto_input = st.checkbox("Ha Diritto ai Ticket", value=True)
-                    
+                        ha_diritto_input = st.checkbox(
+                            "Ha Diritto ai Ticket", value=True
+                        )
+
                     note_dip = st.text_input("Note (opzionale)")
                     if st.form_submit_button("Aggiungi / Aggiorna Dipendente"):
                         if nuovo_nome:
-                            supabase.table("regole_dipendenti").upsert({
-                                "nome_cognome": nuovo_nome.strip(),
-                                "ha_diritto": bool(ha_diritto_input),
-                                "note": str(note_dip)
-                            }, on_conflict="nome_cognome").execute()
-                            st.success(f"Dipendente '{nuovo_nome}' registrato!")
+                            supabase.table("regole_dipendenti").upsert(
+                                {
+                                    "nome_cognome": nuovo_nome.strip(),
+                                    "ha_diritto": bool(ha_diritto_input),
+                                    "note": str(note_dip),
+                                },
+                                on_conflict="nome_cognome",
+                            ).execute()
+                            st.success(
+                                f"Dipendente '{nuovo_nome}' registrato!"
+                            )
                             st.rerun()
                         else:
                             st.error("Inserisci il nome e cognome.")
 
-                res_dip = supabase.table("regole_dipendenti").select("*").order("nome_cognome").execute()
+                res_dip = (
+                    supabase.table("regole_dipendenti")
+                    .select("*")
+                    .order("nome_cognome")
+                    .execute()
+                )
                 if res_dip.data:
                     df_dip = pd.DataFrame(res_dip.data)
                     st.markdown("#### Lista Dipendenti Registrati")
                     st.dataframe(
-                        df_dip[["nome_cognome", "ha_diritto", "note"]].rename(columns={
-                            "nome_cognome": "Cognome e Nome",
-                            "ha_diritto": "Avente Diritto Ticket",
-                            "note": "Note"
-                        }),
-                        use_container_width=True
+                        df_dip[["nome_cognome", "ha_diritto", "note"]].rename(
+                            columns={
+                                "nome_cognome": "Cognome e Nome",
+                                "ha_diritto": "Avente Diritto Ticket",
+                                "note": "Note",
+                            }
+                        ),
+                        use_container_width=True,
                     )
 
                     with st.expander("🗑️ Rimuovi Dipendente dall'Anagrafica"):
-                        dip_del = st.selectbox("Seleziona Dipendente da Rimuovere:", df_dip["nome_cognome"].tolist())
+                        dip_del = st.selectbox(
+                            "Seleziona Dipendente da Rimuovere:",
+                            df_dip["nome_cognome"].tolist(),
+                        )
                         if st.button("Rimuovi Dipendente", type="primary"):
-                            supabase.table("regole_dipendenti").delete().eq("nome_cognome", dip_del).execute()
+                            supabase.table("regole_dipendenti").delete().eq(
+                                "nome_cognome", dip_del
+                            ).execute()
                             st.success("Dipendente rimosso dall'anagrafica.")
                             st.rerun()
 
@@ -579,43 +900,84 @@ elif ruolo == "HR - Magazzino & Ordini":
     if verifica_accesso_hr():
         st.title("📦 Magazzino Ticket & Tracciamento Ordini")
 
-        res_ordini = supabase.table("ordini").select("*").order("created_at", desc=False).execute()
-        res_richieste = supabase.table("richieste").select("*").eq("stato", "Pronti").execute()
+        res_ordini = (
+            supabase.table("ordini")
+            .select("*")
+            .order("created_at", desc=False)
+            .execute()
+        )
+        res_richieste = (
+            supabase.table("richieste")
+            .select("*")
+            .eq("stato", "Pronti")
+            .execute()
+        )
 
-        df_ord = pd.DataFrame(res_ordini.data) if res_ordini.data else pd.DataFrame()
-        df_rich = pd.DataFrame(res_richieste.data) if res_richieste.data else pd.DataFrame()
+        df_ord = (
+            pd.DataFrame(res_ordini.data) if res_ordini.data else pd.DataFrame()
+        )
+        df_rich = (
+            pd.DataFrame(res_richieste.data)
+            if res_richieste.data
+            else pd.DataFrame()
+        )
 
         if not df_ord.empty and "id" in df_ord.columns:
-            df_ord["id"] = pd.to_numeric(df_ord["id"], errors="coerce").astype("Int64")
+            df_ord["id"] = pd.to_numeric(df_ord["id"], errors="coerce").astype(
+                "Int64"
+            )
 
         if not df_rich.empty and "ordine_id" in df_rich.columns:
-            df_rich["ordine_id"] = pd.to_numeric(df_rich["ordine_id"], errors="coerce").astype("Int64")
+            df_rich["ordine_id"] = pd.to_numeric(
+                df_rich["ordine_id"], errors="coerce"
+            ).astype("Int64")
 
         ultimo_residuo_suggerito = 0
         if not df_ord.empty:
             last_order = df_ord.iloc[-1]
-            erogati_last_rich = df_rich[df_rich["ordine_id"] == last_order["id"]]["num_ticket"].sum() if not df_rich.empty else 0
+            erogati_last_rich = (
+                df_rich[df_rich["ordine_id"] == last_order["id"]][
+                    "num_ticket"
+                ].sum()
+                if not df_rich.empty
+                else 0
+            )
             res_prec_last = last_order.get("residuo_precedente", 0) or 0
-            ultimo_residuo_suggerito = max(0, (last_order["quantita_acquistata"] - erogati_last_rich) + res_prec_last)
+            ultimo_residuo_suggerito = max(
+                0,
+                (last_order["quantita_acquistata"] - erogati_last_rich)
+                + res_prec_last,
+            )
 
         with st.expander("➕ Registra Nuova Fattura / Ordine Ticket"):
             with st.form("form_ordine"):
                 col_f1, col_f2 = st.columns(2)
                 with col_f1:
                     num_fat = st.text_input("Numero Fattura / Ordine *")
-                    val_uni = st.number_input("Valore Singolo Ticket (€) *", value=5.20, step=0.10)
-                    qta = st.number_input("Quantità Ticket Acquistati *", min_value=1, value=2000, step=100)
+                    val_uni = st.number_input(
+                        "Valore Singolo Ticket (€) *", value=5.20, step=0.10
+                    )
+                    qta = st.number_input(
+                        "Quantità Ticket Acquistati *",
+                        min_value=1,
+                        value=2000,
+                        step=100,
+                    )
                 with col_f2:
-                    ticket_erogati_input = st.number_input("Ticket Erogati Iniziali", min_value=0, value=0, step=1)
+                    ticket_erogati_input = st.number_input(
+                        "Ticket Erogati Iniziali", min_value=0, value=0, step=1
+                    )
                     res_prec = st.number_input(
-                        "Residuo Ordine Precedente", 
-                        value=int(ultimo_residuo_suggerito), 
-                        step=1
+                        "Residuo Ordine Precedente",
+                        value=int(ultimo_residuo_suggerito),
+                        step=1,
                     )
 
                 if st.form_submit_button("Salva Ordine"):
                     if num_fat:
-                        quantita_residua_calcolata = (int(qta) - int(ticket_erogati_input)) + int(res_prec)
+                        quantita_residua_calcolata = (
+                            int(qta) - int(ticket_erogati_input)
+                        ) + int(res_prec)
                         payload_ord = {
                             "numero_fattura": str(num_fat),
                             "valore_unitario": float(val_uni),
@@ -635,23 +997,31 @@ elif ruolo == "HR - Magazzino & Ordini":
             ordini_calcolati = []
             for idx, row_ord in df_ord.iterrows():
                 if not df_rich.empty and "ordine_id" in df_rich.columns:
-                    erogati_richieste = df_rich[df_rich["ordine_id"] == row_ord["id"]]["num_ticket"].sum()
+                    erogati_richieste = df_rich[
+                        df_rich["ordine_id"] == row_ord["id"]
+                    ]["num_ticket"].sum()
                 else:
                     erogati_richieste = 0
 
                 acquistati = int(row_ord["quantita_acquistata"])
                 residuo_prec = int(row_ord.get("residuo_precedente", 0) or 0)
-                
-                qta_residua_db = row_ord.get("quantita_residua", acquistati + residuo_prec)
+
+                qta_residua_db = row_ord.get(
+                    "quantita_residua", acquistati + residuo_prec
+                )
                 if qta_residua_db is None or pd.isna(qta_residua_db):
                     qta_residua_db = acquistati + residuo_prec
                 else:
                     qta_residua_db = int(qta_residua_db)
 
-                erogati_manuali = max(0, (acquistati + residuo_prec) - qta_residua_db)
+                erogati_manuali = max(
+                    0, (acquistati + residuo_prec) - qta_residua_db
+                )
                 erogati_totali = int(erogati_richieste + erogati_manuali)
-                
-                residui_totali = max(0, (acquistati - erogati_totali) + residuo_prec)
+
+                residui_totali = max(
+                    0, (acquistati - erogati_totali) + residuo_prec
+                )
 
                 ordini_calcolati.append({
                     "ID": int(row_ord["id"]),
@@ -660,14 +1030,13 @@ elif ruolo == "HR - Magazzino & Ordini":
                     "Ticket Acquistati": acquistati,
                     "Ticket Erogati": erogati_totali,
                     "Residuo Ordine Precedente": residuo_prec,
-                    "Ticket Residui TOT": residui_totali
+                    "Ticket Residui TOT": residui_totali,
                 })
 
             df_display = pd.DataFrame(ordini_calcolati)
 
             st.dataframe(
-                df_display.drop(columns=["ID"]),
-                use_container_width=True
+                df_display.drop(columns=["ID"]), use_container_width=True
             )
 
             # -----------------------------------------------------------------
@@ -679,39 +1048,90 @@ elif ruolo == "HR - Magazzino & Ordini":
                 df_erogati = df_rich.copy()
                 if "ordine_id" in df_erogati.columns:
                     df_erogati = df_erogati.merge(
-                        df_ord[["id", "numero_fattura"]], 
-                        left_on="ordine_id", 
-                        right_on="id", 
-                        how="left"
+                        df_ord[["id", "numero_fattura"]],
+                        left_on="ordine_id",
+                        right_on="id",
+                        how="left",
                     )
-                    df_erogati_display = df_erogati[[
-                        "id", "nome_cognome", "email", "mese", "anno", "num_ticket", "numero_fattura"
-                    ]].rename(columns={
+
+                    # FIX KEYERROR: Selezione sicura solo delle colonne effettivamente presenti
+                    cols_da_selezionare = [
+                        c
+                        for c in [
+                            "id_x",
+                            "id",
+                            "nome_cognome",
+                            "email",
+                            "mese",
+                            "anno",
+                            "num_ticket",
+                            "numero_fattura",
+                        ]
+                        if c in df_erogati.columns
+                    ]
+                    df_erogati_sub = df_erogati[cols_da_selezionare].copy()
+
+                    # Rinomina id principale se dopo il merge si chiama 'id_x'
+                    if (
+                        "id_x" in df_erogati_sub.columns
+                        and "id" not in df_erogati_sub.columns
+                    ):
+                        df_erogati_sub = df_erogati_sub.rename(
+                            columns={"id_x": "id"}
+                        )
+
+                    df_erogati_display = df_erogati_sub.rename(columns={
                         "nome_cognome": "Dipendente",
                         "email": "Email",
                         "mese": "Mese",
                         "anno": "Anno",
                         "num_ticket": "N° Ticket Erogati",
-                        "numero_fattura": "Fattura / Ordine di Riferimento"
+                        "numero_fattura": "Fattura / Ordine di Riferimento",
                     })
-                    st.dataframe(df_erogati_display.drop(columns=["id"]), use_container_width=True)
 
-                    with st.expander("🗑️ Elimina una Richiesta Erogata"):
-                        rich_options = df_erogati_display["id"].tolist()
-                        del_rich_id = st.selectbox(
-                            "Seleziona la richiesta erogata da eliminare:",
-                            options=rich_options,
-                            format_func=lambda x: f"{df_erogati_display[df_erogati_display['id']==x]['Dipendente'].values[0]} - {df_erogati_display[df_erogati_display['id']==x]['Mese'].values[0]} {df_erogati_display[df_erogati_display['id']==x]['Anno'].values[0]} ({df_erogati_display[df_erogati_display['id']==x]['N° Ticket Erogati'].values[0]} ticket)"
-                        )
-                        if st.button("🗑️ Elimina Richiesta Selezionata", type="primary", key="btn_del_erogata"):
-                            try:
-                                supabase.table("richieste").delete().eq("id", int(del_rich_id)).execute()
-                                st.success("✅ Richiesta erogata eliminata con successo! I ticket sono stati ripristinati in magazzino.")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Errore durante l'eliminazione della richiesta: {e}")
+                    col_drop = (
+                        ["id"] if "id" in df_erogati_display.columns else []
+                    )
+                    st.dataframe(
+                        df_erogati_display.drop(columns=col_drop),
+                        use_container_width=True,
+                    )
+
+                    if "id" in df_erogati_display.columns:
+                        with st.expander("🗑️ Elimina una Richiesta Erogata"):
+                            rich_options = df_erogati_display["id"].tolist()
+                            del_rich_id = st.selectbox(
+                                "Seleziona la richiesta erogata da eliminare:",
+                                options=rich_options,
+                                format_func=lambda x: (
+                                    f"{df_erogati_display[df_erogati_display['id']==x]['Dipendente'].values[0]} - {df_erogati_display[df_erogati_display['id']==x]['Mese'].values[0]} {df_erogati_display[df_erogati_display['id']==x]['Anno'].values[0]} ({df_erogati_display[df_erogati_display['id']==x]['N° Ticket Erogati'].values[0]} ticket)"
+                                ),
+                            )
+                            if st.button(
+                                "🗑️ Elimina Richiesta Selezionata",
+                                type="primary",
+                                key="btn_del_erogata",
+                            ):
+                                try:
+                                    supabase.table("richieste").delete().eq(
+                                        "id", int(del_rich_id)
+                                    ).execute()
+                                    st.success(
+                                        "✅ Richiesta erogata eliminata con"
+                                        " successo! I ticket sono stati"
+                                        " ripristinati in magazzino."
+                                    )
+                                    st.rerun()
+                                me:
+                                    st.error(
+                                        "Errore durante l'eliminazione della"
+                                        f" richiesta: {e}"
+                                    )
                 else:
-                    st.info("Nessun dettaglio ordine associato alle richieste erogate.")
+                    st.info(
+                        "Nessun dettaglio ordine associato alle richieste"
+                        " erogate."
+                    )
             else:
                 st.info("Nessun ticket erogato al momento.")
 
@@ -724,51 +1144,93 @@ elif ruolo == "HR - Magazzino & Ordini":
             ord_sel_id = st.selectbox(
                 "Seleziona l'ordine da gestire o eliminare:",
                 options=[int(i) for i in df_ord["id"].tolist()],
-                format_func=lambda x: f"Fattura/Ordine: {df_ord[df_ord['id']==x]['numero_fattura'].values[0]}"
+                format_func=lambda x: (
+                    "Fattura/Ordine:"
+                    f" {df_ord[df_ord['id']==x]['numero_fattura'].values[0]}"
+                ),
             )
 
             row_selected = df_ord[df_ord["id"] == ord_sel_id].iloc[0]
 
-            tab_mod, tab_del = st.tabs(["✏️ Modifica Dati Ordine", "🗑️ Elimina Ordine"])
+            tab_mod, tab_del = st.tabs(
+                ["✏️ Modifica Dati Ordine", "🗑️ Elimina Ordine"]
+            )
 
             with tab_mod:
                 with st.form(f"form_edit_ord_{ord_sel_id}"):
-                    edit_fat = st.text_input("Numero Fattura / Ordine", value=str(row_selected["numero_fattura"]))
-                    edit_val = st.number_input("Valore Singolo Ticket (€)", value=float(row_selected["valore_unitario"]), step=0.10)
-                    edit_qta = st.number_input("Quantità Ticket Acquistati", value=int(row_selected["quantita_acquistata"]), step=100)
-                    
-                    res_prec_curr = int(row_selected.get("residuo_precedente", 0) or 0)
-                    qta_res_curr = row_selected.get("quantita_residua", edit_qta + res_prec_curr)
+                    edit_fat = st.text_input(
+                        "Numero Fattura / Ordine",
+                        value=str(row_selected["numero_fattura"]),
+                    )
+                    edit_val = st.number_input(
+                        "Valore Singolo Ticket (€)",
+                        value=float(row_selected["valore_unitario"]),
+                        step=0.10,
+                    )
+                    edit_qta = st.number_input(
+                        "Quantità Ticket Acquistati",
+                        value=int(row_selected["quantita_acquistata"]),
+                        step=100,
+                    )
+
+                    res_prec_curr = int(
+                        row_selected.get("residuo_precedente", 0) or 0
+                    )
+                    qta_res_curr = row_selected.get(
+                        "quantita_residua", edit_qta + res_prec_curr
+                    )
                     if qta_res_curr is None or pd.isna(qta_res_curr):
                         qta_res_curr = edit_qta + res_prec_curr
                     else:
                         qta_res_curr = int(qta_res_curr)
                     erog_curr = max(0, (edit_qta + res_prec_curr) - qta_res_curr)
 
-                    edit_erog = st.number_input("Ticket Erogati Iniziali", value=int(erog_curr), step=1)
-                    edit_res = st.number_input("Residuo Ordine Precedente", value=res_prec_curr, step=1)
+                    edit_erog = st.number_input(
+                        "Ticket Erogati Iniziali", value=int(erog_curr), step=1
+                    )
+                    edit_res = st.number_input(
+                        "Residuo Ordine Precedente",
+                        value=res_prec_curr,
+                        step=1,
+                    )
 
                     if st.form_submit_button("💾 Salva Modifiche Ordine"):
                         try:
-                            qta_res_nuova = (int(edit_qta) - int(edit_erog)) + int(edit_res)
+                            qta_res_nuova = (
+                                int(edit_qta) - int(edit_erog)
+                            ) + int(edit_res)
                             supabase.table("ordini").update({
                                 "numero_fattura": str(edit_fat),
                                 "valore_unitario": float(edit_val),
                                 "quantita_acquistata": int(edit_qta),
                                 "quantita_residua": int(qta_res_nuova),
-                                "residuo_precedente": int(edit_res)
+                                "residuo_precedente": int(edit_res),
                             }).eq("id", int(ord_sel_id)).execute()
                             st.success("✅ Ordine aggiornato con successo!")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"Errore durante l'aggiornamento dell'ordine: {e}")
+                            st.error(
+                                "Errore durante l'aggiornamento dell'ordine:"
+                                f" {e}"
+                            )
 
             with tab_del:
-                st.warning("⚠️ L'eliminazione dell'ordine scollegherà eventuali richieste erogate associate.")
-                if st.button("🗑️ Conferma ed Elimina Ordine", type="primary", key=f"btn_del_{ord_sel_id}"):
+                st.warning(
+                    "⚠️ L'eliminazione dell'ordine scollegherà eventuali"
+                    " richieste erogate associate."
+                )
+                if st.button(
+                    "🗑️ Conferma ed Elimina Ordine",
+                    type="primary",
+                    key=f"btn_del_{ord_sel_id}",
+                ):
                     try:
-                        supabase.table("richieste").update({"ordine_id": None}).eq("ordine_id", int(ord_sel_id)).execute()
-                        supabase.table("ordini").delete().eq("id", int(ord_sel_id)).execute()
+                        supabase.table("richieste").update(
+                            {"ordine_id": None}
+                        ).eq("ordine_id", int(ord_sel_id)).execute()
+                        supabase.table("ordini").delete().eq(
+                            "id", int(ord_sel_id)
+                        ).execute()
                         st.success("✅ Ordine eliminato con successo!")
                         st.rerun()
                     except Exception as e:

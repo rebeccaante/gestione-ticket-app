@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from supabase import create_client
-import re
+import io
 
 # Configurazione Pagina
 st.set_page_config(
@@ -208,7 +208,7 @@ elif ruolo == "HR - Gestione Richieste":
 
             sub_tab_a, sub_tab_b, sub_tab_c = st.tabs([
                 "📊 Matrice Tessere Digitali", 
-                "📁 Upload & Calcolo Libro Presenze", 
+                "📁 Upload & Storico Libro Presenze", 
                 "👥 Anagrafica Nominativi con Diritto"
             ])
 
@@ -318,10 +318,10 @@ elif ruolo == "HR - Gestione Richieste":
                 col_m1.metric(f"Totale Ticket Caricati ({anno_sel})", f"{int(tot_ticket_anno)} ticket")
                 col_m2.metric(f"Valore Economico Totale ({anno_sel})", f"€ {tot_valore_anno:.2f}")
 
-            # SUB-TAB B: UPLOAD & CALCOLO LIBRO PRESENZE (LETTURA DIRETTA COLONNA AQ)
+            # SUB-TAB B: UPLOAD & STORICO LIBRO PRESENZE
             with sub_tab_b:
-                st.markdown("### 📄 Upload Libro Presenze Mensile")
-                st.markdown("Carica il file Excel o CSV. Verranno presi i valori della **colonna AQ** (CONTAVALORI giorni) per le sole causali **PREORD** e **SMARTW**.")
+                st.markdown("### 📄 Upload & Storico Libro Presenze Mensile")
+                st.markdown("Carica o consulta i file dei Libri Presenze. Vengono elaborati i valori della **colonna AQ** (CONTAVALORI) per le causali **PREORD** e **SMARTW**.")
 
                 col_u1, col_u2 = st.columns(2)
                 with col_u1:
@@ -329,133 +329,203 @@ elif ruolo == "HR - Gestione Richieste":
                 with col_u2:
                     a_presenza = st.selectbox("Anno Presenze:", ANNI_DISPONIBILI, index=0)
 
-                file_presenze = st.file_uploader("Carica Libro Presenze (Excel o CSV)", type=["xlsx", "xls", "csv"])
+                file_presenze = st.file_uploader("Carica Nuovo Libro Presenze (Excel o CSV)", type=["xlsx", "xls", "csv"])
+
+                # FUNZIONE DI ESTRAZIONE PRESENZE
+                def elabora_df_presenze(df_raw, m_pres, a_pres):
+                    res_regole = supabase.table("regole_dipendenti").select("*").eq("ha_diritto", True).execute()
+                    dip_abilitati = [r["nome_cognome"] for r in res_regole.data] if res_regole.data else []
+
+                    if not dip_abilitati:
+                        st.warning("⚠️ Non ci sono dipendenti abilitati nell'Anagrafica.")
+                        return
+
+                    risultati_calcolo = []
+                    idx_colonna_aq = 42
+
+                    for dip in dip_abilitati:
+                        parts = dip.strip().lower().split()
+                        trovato = False
+                        totale_giorni_dip = 0
+
+                        for idx_row in range(len(df_raw)):
+                            row = df_raw.iloc[idx_row]
+                            row_str_vals = [str(val).strip().lower() for val in row.values if pd.notna(val)]
+                            row_text = " ".join(row_str_vals)
+
+                            if all(part in row_text for part in parts):
+                                trovato = True
+                                max_search_rows = min(len(df_raw), idx_row + 12)
+
+                                for r_i in range(idx_row, max_search_rows):
+                                    sub_row = df_raw.iloc[r_i]
+                                    sub_row_text = " ".join([str(v).strip().upper() for v in sub_row.values if pd.notna(v)])
+
+                                    if r_i > idx_row and any(k in sub_row_text.lower() for k in ["matr.", "badge", "cod. dip", "riepilogo totale"]):
+                                        break
+
+                                    if "PREORD" in sub_row_text or "SMARTW" in sub_row_text:
+                                        val_aq = None
+                                        if len(sub_row) > idx_colonna_aq and pd.notna(sub_row.iloc[idx_colonna_aq]):
+                                            val_aq = sub_row.iloc[idx_colonna_aq]
+                                        else:
+                                            vals_validi = [v for v in sub_row.values if pd.notna(v)]
+                                            if vals_validi:
+                                                val_aq = vals_validi[-1]
+
+                                        if val_aq is not None:
+                                            try:
+                                                val_num = int(float(str(val_aq).replace(',', '.').strip()))
+                                                totale_giorni_dip += val_num
+                                            except ValueError:
+                                                pass
+                                break
+
+                        risultati_calcolo.append({
+                            "Cognome e Nome": dip,
+                            "Presente nel Libro Presenze": "✅ SI" if trovato else "❌ NO / Non Trovato",
+                            "Ticket PREORD + SMARTW (Col. AQ)": totale_giorni_dip,
+                            "N° Ticket Spettanti": totale_giorni_dip,
+                            "Valore Economico (€)": totale_giorni_dip * 5.20
+                        })
+
+                    df_res_calc = pd.DataFrame(risultati_calcolo)
+                    
+                    st.markdown("---")
+                    st.markdown(f"### 🧮 Risultati Calcolo Spettanze Ticket ({m_pres.capitalize()} {a_pres})")
+                    st.dataframe(df_res_calc, use_container_width=True)
+
+                    tot_ticket_calc = df_res_calc["N° Ticket Spettanti"].sum()
+                    tot_valore_calc = tot_ticket_calc * 5.20
+
+                    c_k1, c_k2 = st.columns(2)
+                    c_k1.metric("Totale Ticket Spettanti Mese", f"{tot_ticket_calc} ticket")
+                    c_k2.metric("Valore Economico Totale Mese", f"€ {tot_valore_calc:.2f}")
+
+                    st.markdown("---")
+                    st.subheader("⚡ Compilazione Automatica Matrice Tessere Digitali")
+                    if st.button(f"⚡ Applica e Popola Matrice Tessere ({m_pres.capitalize()} {a_pres})", type="primary", key=f"btn_popola_{m_pres}_{a_pres}"):
+                        try:
+                            res_mat = supabase.table("matrice_tessere").select("*").eq("anno", int(a_pres)).execute()
+                            df_mat_db = pd.DataFrame(res_mat.data) if res_mat.data else pd.DataFrame()
+
+                            aggiornati_cnt = 0
+                            for idx_c, row_c in df_res_calc.iterrows():
+                                nome_dip_c = row_c["Cognome e Nome"]
+                                n_ticket_c = int(row_c["N° Ticket Spettanti"])
+
+                                if not df_mat_db.empty and "assegnato_a" in df_mat_db.columns:
+                                    parts_c = nome_dip_c.strip().lower().split()
+                                    
+                                    match_tess = df_mat_db[df_mat_db["assegnato_a"].apply(
+                                        lambda x: all(p in str(x).lower() for p in parts_c) if pd.notna(x) and str(x).strip() != "" else False
+                                    )]
+                                    
+                                    if not match_tess.empty:
+                                        tess_row = match_tess.iloc[0]
+                                        t_num = str(tess_row["numero_tessera"])
+
+                                        update_dict = {
+                                            "numero_tessera": t_num,
+                                            "anno": int(a_pres),
+                                            "assegnato_a": str(tess_row["assegnato_a"]),
+                                            m_pres.lower(): n_ticket_c
+                                        }
+
+                                        supabase.table("matrice_tessere").upsert(
+                                            update_dict, on_conflict="numero_tessera,anno"
+                                        ).execute()
+                                        aggiornati_cnt += 1
+
+                            if aggiornati_cnt > 0:
+                                st.success(f"✅ Matrice aggiornata per {aggiornati_cnt} dipendenti/tessere nel mese di {m_pres.capitalize()}!")
+                            else:
+                                st.warning("⚠️ Nessun abbinamento trovato con i nominativi nell'Anagrafica.")
+
+                        except Exception as e_pop:
+                            st.error(f"Errore durante l'aggiornamento automatico della matrice: {e_pop}")
 
                 if file_presenze:
                     try:
+                        file_bytes = file_presenze.read()
+                        file_name_storage = f"Presenze_{m_presenza.lower()}_{a_presenza}_{file_presenze.name}"
+
+                        # Upload su Supabase Storage
+                        supabase.storage.from_("libri.presenze").upload(
+                            file_name_storage,
+                            file_bytes,
+                            file_options={"content-type": file_presenze.type, "upsert": "true"},
+                        )
+                        file_url = supabase.storage.from_("libri.presenze").get_public_url(file_name_storage)
+
+                        # Registrazione nello Storico DB
+                        supabase.table("storico_presenze").insert({
+                            "mese": m_presenza.lower(),
+                            "anno": int(a_presenza),
+                            "nome_file": file_presenze.name,
+                            "file_url": file_url
+                        }).execute()
+
+                        st.success(f"✅ File salvato nello storico per {m_presenza.capitalize()} {a_presenza}!")
+
                         if file_presenze.name.endswith(".csv"):
-                            df_raw = pd.read_csv(file_presenze, header=None)
+                            df_raw = pd.read_csv(io.BytesIO(file_bytes), header=None)
                         else:
-                            df_raw = pd.read_excel(file_presenze, header=None)
+                            df_raw = pd.read_excel(io.BytesIO(file_bytes), header=None)
 
-                        res_regole = supabase.table("regole_dipendenti").select("*").eq("ha_diritto", True).execute()
-                        dip_abilitati = [r["nome_cognome"] for r in res_regole.data] if res_regole.data else []
-
-                        if not dip_abilitati:
-                            st.warning("⚠️ Non ci sono dipendenti abilitati nell'Anagrafica. Aggiungili nel tab 'Anagrafica Nominativi con Diritto'.")
-                        else:
-                            st.success(f"File '{file_presenze.name}' caricato. Estraggo il CONTAVALORI dalla Colonna AQ...")
-
-                            risultati_calcolo = []
-                            idx_colonna_aq = 42
-
-                            for dip in dip_abilitati:
-                                parts = dip.strip().lower().split()
-                                trovato = False
-                                totale_giorni_dip = 0
-
-                                for idx_row in range(len(df_raw)):
-                                    row = df_raw.iloc[idx_row]
-                                    row_str_vals = [str(val).strip().lower() for val in row.values if pd.notna(val)]
-                                    row_text = " ".join(row_str_vals)
-
-                                    if all(part in row_text for part in parts):
-                                        trovato = True
-                                        max_search_rows = min(len(df_raw), idx_row + 12)
-
-                                        for r_i in range(idx_row, max_search_rows):
-                                            sub_row = df_raw.iloc[r_i]
-                                            sub_row_text = " ".join([str(v).strip().upper() for v in sub_row.values if pd.notna(v)])
-
-                                            if r_i > idx_row and any(k in sub_row_text.lower() for k in ["matr.", "badge", "cod. dip", "riepilogo totale"]):
-                                                break
-
-                                            if "PREORD" in sub_row_text or "SMARTW" in sub_row_text:
-                                                val_aq = None
-                                                if len(sub_row) > idx_colonna_aq and pd.notna(sub_row.iloc[idx_colonna_aq]):
-                                                    val_aq = sub_row.iloc[idx_colonna_aq]
-                                                else:
-                                                    vals_validi = [v for v in sub_row.values if pd.notna(v)]
-                                                    if vals_validi:
-                                                        val_aq = vals_validi[-1]
-
-                                                if val_aq is not None:
-                                                    try:
-                                                        val_num = int(float(str(val_aq).replace(',', '.').strip()))
-                                                        totale_giorni_dip += val_num
-                                                    except ValueError:
-                                                        pass
-
-                                        break
-
-                                risultati_calcolo.append({
-                                    "Cognome e Nome": dip,
-                                    "Presente nel Libro Presenze": "✅ SI" if trovato else "❌ NO / Non Trovato",
-                                    "Ticket PREORD + SMARTW (Col. AQ)": totale_giorni_dip,
-                                    "N° Ticket Spettanti": totale_giorni_dip,
-                                    "Valore Economico (€)": totale_giorni_dip * 5.20
-                                })
-
-                            df_res_calc = pd.DataFrame(risultati_calcolo)
-                            
-                            st.markdown("---")
-                            st.markdown("### 🧮 Risultati Calcolo Spettanze Ticket")
-                            st.dataframe(df_res_calc, use_container_width=True)
-
-                            tot_ticket_calc = df_res_calc["N° Ticket Spettanti"].sum()
-                            tot_valore_calc = tot_ticket_calc * 5.20
-
-                            c_k1, c_k2 = st.columns(2)
-                            c_k1.metric("Totale Ticket Spettanti Mese", f"{tot_ticket_calc} ticket")
-                            c_k2.metric("Valore Economico Totale Mese", f"€ {tot_valore_calc:.2f}")
-
-                            st.markdown("---")
-                            st.subheader("⚡ Compilazione Automatica Matrice Tessere Digitali")
-                            st.write(f"Clicca sul pulsante sottostante per riportare automaticamente questi conteggi nella **Matrice Tessere Digitali** per il mese di **{m_presenza.capitalize()} {a_presenza}**.")
-
-                            if st.button(f"⚡ Applica e Popola Matrice Tessere ({m_presenza.capitalize()} {a_presenza})", type="primary"):
-                                try:
-                                    res_mat = supabase.table("matrice_tessere").select("*").eq("anno", int(a_presenza)).execute()
-                                    df_mat_db = pd.DataFrame(res_mat.data) if res_mat.data else pd.DataFrame()
-
-                                    aggiornati_cnt = 0
-                                    for idx_c, row_c in df_res_calc.iterrows():
-                                        nome_dip_c = row_c["Cognome e Nome"]
-                                        n_ticket_c = int(row_c["N° Ticket Spettanti"])
-
-                                        if not df_mat_db.empty and "assegnato_a" in df_mat_db.columns:
-                                            parts_c = nome_dip_c.strip().lower().split()
-                                            
-                                            match_tess = df_mat_db[df_mat_db["assegnato_a"].apply(
-                                                lambda x: all(p in str(x).lower() for p in parts_c) if pd.notna(x) and str(x).strip() != "" else False
-                                            )]
-                                            
-                                            if not match_tess.empty:
-                                                tess_row = match_tess.iloc[0]
-                                                t_num = str(tess_row["numero_tessera"])
-
-                                                update_dict = {
-                                                    "numero_tessera": t_num,
-                                                    "anno": int(a_presenza),
-                                                    "assegnato_a": str(tess_row["assegnato_a"]),
-                                                    m_presenza.lower(): n_ticket_c
-                                                }
-
-                                                supabase.table("matrice_tessere").upsert(
-                                                    update_dict, on_conflict="numero_tessera,anno"
-                                                ).execute()
-                                                aggiornati_cnt += 1
-
-                                    if aggiornati_cnt > 0:
-                                        st.success(f"✅ Matrice aggiornata con successo per {aggiornati_cnt} dipendenti/tessere nel mese di {m_presenza.capitalize()}!")
-                                    else:
-                                        st.warning("⚠️ Nessun abbinamento trovato tra la colonna 'Assegnato Momentaneamente a' delle Tessere e i Nominativi nell'Anagrafica.")
-
-                                except Exception as e_pop:
-                                    st.error(f"Errore durante l'aggiornamento automatico della matrice: {e_pop}")
+                        elabora_df_presenze(df_raw, m_presenza, a_presenza)
 
                     except Exception as e:
-                        st.error(f"Errore nella lettura del file presenze: {e}")
+                        st.error(f"Errore nel salvataggio ed elaborazione del file presenze: {e}")
+
+                # -------------------------------------------------------------
+                # CONSULTAZIONE STORICO LIBRI PRESENZE
+                # -------------------------------------------------------------
+                st.markdown("---")
+                st.subheader("📚 Archivio e Storico Libri Presenze")
+
+                res_storico = supabase.table("storico_presenze").select("*").order("created_at", desc=True).execute()
+                df_storico = pd.DataFrame(res_storico.data) if res_storico.data else pd.DataFrame()
+
+                if df_storico.empty:
+                    st.info("Nessun libro presenze ancora salvato nello storico.")
+                else:
+                    col_st1, col_st2 = st.columns(2)
+                    with col_st1:
+                        filtro_st_anno = st.selectbox("Filtra Anno Storico:", ANNI_DISPONIBILI, index=0, key="st_anno")
+                    with col_st2:
+                        filtro_st_mese = st.selectbox("Filtra Mese Storico:", MESI_TUTTI, index=8, key="st_mese")
+
+                    match_storico = df_storico[
+                        (df_storico["anno"] == int(filtro_st_anno)) & 
+                        (df_storico["mese"] == filtro_st_mese.lower())
+                    ]
+
+                    if not match_storico.empty:
+                        rec_file = match_storico.iloc[0]
+                        st.success(f"📁 Trovato file salvato per **{filtro_st_mese.capitalize()} {filtro_st_anno}**: `{rec_file['nome_file']}`")
+                        
+                        col_d1, col_d2 = st.columns(2)
+                        with col_d1:
+                            st.link_button("📥 Scarica File Libro Presenze Originale", rec_file["file_url"])
+                        
+                        with col_d2:
+                            if st.button("🔄 Rianalizza e Ricalcola Presenze da Archiviati"):
+                                try:
+                                    import urllib.request
+                                    req = urllib.request.urlopen(rec_file["file_url"])
+                                    content_bytes = req.read()
+
+                                    if rec_file["nome_file"].endswith(".csv"):
+                                        df_arch = pd.read_csv(io.BytesIO(content_bytes), header=None)
+                                    else:
+                                        df_arch = pd.read_excel(io.BytesIO(content_bytes), header=None)
+
+                                    elabora_df_presenze(df_arch, filtro_st_mese, filtro_st_anno)
+                                except Exception as e_arch:
+                                    st.error(f"Errore nella lettura del file archiviato: {e_arch}")
+                    else:
+                        st.warning(f"Nessun libro presenze archiviato per {filtro_st_mese.capitalize()} {filtro_st_anno}.")
 
             # SUB-TAB C: ANAGRAFICA NOMINATIVI CON DIRITTO
             with sub_tab_c:
@@ -626,7 +696,6 @@ elif ruolo == "HR - Magazzino & Ordini":
                     })
                     st.dataframe(df_erogati_display.drop(columns=["id"]), use_container_width=True)
 
-                    # ELIMINAZIONE RICHIESTA DA MAGAZZINO
                     with st.expander("🗑️ Elimina una Richiesta Erogata"):
                         rich_options = df_erogati_display["id"].tolist()
                         del_rich_id = st.selectbox(

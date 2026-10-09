@@ -180,7 +180,6 @@ elif ruolo == "HR - Gestione Richieste":
                                 if st.button("Segna come PRONTI 🚀", key=f"btn_{row['id']}"):
                                     ord_data = df_ordini[df_ordini["numero_fattura"] == ord_sel].iloc[0]
 
-                                    # Conversione esplicita degli ID a int di Python per evitare errori di serializzazione JSON
                                     req_id = int(row["id"])
                                     ordine_id = int(ord_data["id"])
 
@@ -509,6 +508,13 @@ elif ruolo == "HR - Magazzino & Ordini":
         df_ord = pd.DataFrame(res_ordini.data) if res_ordini.data else pd.DataFrame()
         df_rich = pd.DataFrame(res_richieste.data) if res_richieste.data else pd.DataFrame()
 
+        # Conversione dei tipi delle chiavi primaria/esterna per garantire compatibilità con Pandas merge
+        if not df_ord.empty and "id" in df_ord.columns:
+            df_ord["id"] = pd.to_numeric(df_ord["id"], errors="coerce").astype("Int64")
+
+        if not df_rich.empty and "ordine_id" in df_rich.columns:
+            df_rich["ordine_id"] = pd.to_numeric(df_rich["ordine_id"], errors="coerce").astype("Int64")
+
         ultimo_residuo_suggerito = 0
         if not df_ord.empty:
             last_order = df_ord.iloc[-1]
@@ -561,7 +567,7 @@ elif ruolo == "HR - Magazzino & Ordini":
                 residuo_prec = int(row_ord.get("residuo_precedente", 0) or 0)
                 
                 qta_residua_db = row_ord.get("quantita_residua", acquistati + residuo_prec)
-                if qta_residua_db is None:
+                if qta_residua_db is None or pd.isna(qta_residua_db):
                     qta_residua_db = acquistati + residuo_prec
                 else:
                     qta_residua_db = int(qta_residua_db)
@@ -642,7 +648,7 @@ elif ruolo == "HR - Magazzino & Ordini":
                     
                     res_prec_curr = int(row_selected.get("residuo_precedente", 0) or 0)
                     qta_res_curr = row_selected.get("quantita_residua", edit_qta + res_prec_curr)
-                    if qta_res_curr is None:
+                    if qta_res_curr is None or pd.isna(qta_res_curr):
                         qta_res_curr = edit_qta + res_prec_curr
                     else:
                         qta_res_curr = int(qta_res_curr)

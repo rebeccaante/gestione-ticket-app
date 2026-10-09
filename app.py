@@ -60,7 +60,7 @@ def verifica_accesso_hr():
 # 1. PORTALE RICHIESTE
 # -----------------------------------------------------------------------------
 if ruolo == "Nuova Richiesta":
-    st.title("🎟️ Richiesta Ticket Buoni Pasto")
+    st.title("🎟️ Richiesta")
     st.markdown("Compila i campi sottostanti e carica la foto o il PDF del modulo firmato.")
 
     with st.form("form_richiesta", clear_on_submit=True):

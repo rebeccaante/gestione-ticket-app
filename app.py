@@ -131,8 +131,8 @@ elif ruolo == "HR - Gestione Richieste":
             richieste_res = supabase.table("richieste").select("*").execute()
             ordini_res = supabase.table("ordini").select("*").order("created_at", desc=True).execute()
 
-            df_req = pd.DataFrame(richieste_res.data)
-            df_ordini = pd.DataFrame(ordini_res.data)
+            df_req = pd.DataFrame(richieste_res.data) if richieste_res.data else pd.DataFrame()
+            df_ordini = pd.DataFrame(ordini_res.data) if ordini_res.data else pd.DataFrame()
 
             if df_req.empty:
                 st.info("Nessuna richiesta ricevuta al momento.")
@@ -152,6 +152,7 @@ elif ruolo == "HR - Gestione Richieste":
                     is_pronto = row["stato"] == "Pronti"
                     color = "#D4EDDA" if is_pronto else "#FFF3CD"
                     badge = "✅ PRONTI" if is_pronto else "⏳ IN LAVORAZIONE"
+                    req_id = int(row["id"])
 
                     st.markdown(
                         f"""
@@ -165,7 +166,7 @@ elif ruolo == "HR - Gestione Richieste":
                         unsafe_allow_html=True,
                     )
 
-                    col1, col2 = st.columns([2, 3])
+                    col1, col2, col3 = st.columns([2, 3, 1])
                     with col1:
                         st.link_button("📄 Scarica/Apri Modulo Firmato", row["file_url"])
 
@@ -175,12 +176,10 @@ elif ruolo == "HR - Gestione Richieste":
                                 ord_sel = st.selectbox(
                                     "Assegna all'Ordine/Fattura:",
                                     df_ordini["numero_fattura"].tolist(),
-                                    key=f"sel_{row['id']}",
+                                    key=f"sel_{req_id}",
                                 )
-                                if st.button("Segna come PRONTI 🚀", key=f"btn_{row['id']}"):
+                                if st.button("Segna come PRONTI 🚀", key=f"btn_{req_id}"):
                                     ord_data = df_ordini[df_ordini["numero_fattura"] == ord_sel].iloc[0]
-
-                                    req_id = int(row["id"])
                                     ordine_id = int(ord_data["id"])
 
                                     supabase.table("richieste").update(
@@ -194,6 +193,14 @@ elif ruolo == "HR - Gestione Richieste":
                                     st.rerun()
                             else:
                                 st.warning("⚠️ Nessun ordine disponibile in magazzino.")
+
+                    with col3:
+                        with st.popover("🗑️ Elimina"):
+                            st.write("Confermi l'eliminazione della richiesta?")
+                            if st.button("🗑️ Conferma Elimina", key=f"del_req_{req_id}", type="primary"):
+                                supabase.table("richieste").delete().eq("id", req_id).execute()
+                                st.success("Richiesta eliminata!")
+                                st.rerun()
 
         # SUB-TAB 2: TICKET DIGITALI & LIBRO PRESENZE
         with tab2:
@@ -508,7 +515,6 @@ elif ruolo == "HR - Magazzino & Ordini":
         df_ord = pd.DataFrame(res_ordini.data) if res_ordini.data else pd.DataFrame()
         df_rich = pd.DataFrame(res_richieste.data) if res_richieste.data else pd.DataFrame()
 
-        # Conversione dei tipi delle chiavi primaria/esterna per garantire compatibilità con Pandas merge
         if not df_ord.empty and "id" in df_ord.columns:
             df_ord["id"] = pd.to_numeric(df_ord["id"], errors="coerce").astype("Int64")
 
@@ -609,7 +615,7 @@ elif ruolo == "HR - Magazzino & Ordini":
                         how="left"
                     )
                     df_erogati_display = df_erogati[[
-                        "nome_cognome", "email", "mese", "anno", "num_ticket", "numero_fattura"
+                        "id", "nome_cognome", "email", "mese", "anno", "num_ticket", "numero_fattura"
                     ]].rename(columns={
                         "nome_cognome": "Dipendente",
                         "email": "Email",
@@ -618,7 +624,23 @@ elif ruolo == "HR - Magazzino & Ordini":
                         "num_ticket": "N° Ticket Erogati",
                         "numero_fattura": "Fattura / Ordine di Riferimento"
                     })
-                    st.dataframe(df_erogati_display, use_container_width=True)
+                    st.dataframe(df_erogati_display.drop(columns=["id"]), use_container_width=True)
+
+                    # ELIMINAZIONE RICHIESTA DA MAGAZZINO
+                    with st.expander("🗑️ Elimina una Richiesta Erogata"):
+                        rich_options = df_erogati_display["id"].tolist()
+                        del_rich_id = st.selectbox(
+                            "Seleziona la richiesta erogata da eliminare:",
+                            options=rich_options,
+                            format_func=lambda x: f"{df_erogati_display[df_erogati_display['id']==x]['Dipendente'].values[0]} - {df_erogati_display[df_erogati_display['id']==x]['Mese'].values[0]} {df_erogati_display[df_erogati_display['id']==x]['Anno'].values[0]} ({df_erogati_display[df_erogati_display['id']==x]['N° Ticket Erogati'].values[0]} ticket)"
+                        )
+                        if st.button("🗑️ Elimina Richiesta Selezionata", type="primary", key="btn_del_erogata"):
+                            try:
+                                supabase.table("richieste").delete().eq("id", int(del_rich_id)).execute()
+                                st.success("✅ Richiesta erogata eliminata con successo! I ticket sono stati ripristinati in magazzino.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Errore durante l'eliminazione della richiesta: {e}")
                 else:
                     st.info("Nessun dettaglio ordine associato alle richieste erogate.")
             else:

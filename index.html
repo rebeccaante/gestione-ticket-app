@@ -16,12 +16,12 @@
     .stBtn { background-color: #ffffff; border: 1px solid #d3d3d3; border-radius: 8px; color: #31333F; transition: all 0.2s; }
     .stBtn:hover { border-color: #ff4b4b; color: #ff4b4b; }
     .tab-active { border-bottom: 2px solid #ef4444; color: #ef4444; font-weight: 700; }
-    .subtab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 700; }
+    .subtab-active { border-bottom: 2px solid #ef4444; color: #ef4444; font-weight: 700; }
   </style>
 </head>
 <body class="bg-white min-h-screen flex text-slate-800">
 
-  <!-- SIDEBAR LEFT IDENTICA A STREAMLIT -->
+  <!-- SIDEBAR LEFT -->
   <aside class="w-80 stSidebar p-6 flex flex-col justify-between shrink-0 min-h-screen border-r border-slate-200">
     <div>
       <div class="flex items-center justify-between mb-6">
@@ -56,7 +56,7 @@
         <span class="text-base">🔒</span>
         <h3 class="text-base font-bold text-slate-800">Area Riservata HR</h3>
       </div>
-      <p class="text-xs text-slate-600 mb-2">Inserisci Password HR:</p>
+      <p class="text-xs text-slate-600 mb-2 font-medium">Inserisci Password HR:</p>
       <div class="relative">
         <input type="password" id="hrPasswordInput" oninput="checkPassword()" placeholder="••••••••••••" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm pr-9 focus:outline-none focus:border-slate-400">
         <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">👁️</button>
@@ -150,17 +150,18 @@
       </div>
 
       <div id="gestioneUnlocked" class="hidden space-y-6">
-        <div class="flex items-center gap-3 mb-4">
+        <div class="flex items-center gap-3 mb-2">
           <span class="text-3xl">📋</span>
           <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Dashboard Gestione Richieste (HR)</h1>
         </div>
 
+        <!-- MAIN TABS -->
         <div class="flex gap-8 border-b border-slate-200 text-xs font-medium pb-2">
           <button id="mainTab1Btn" onclick="switchMainTab('tab1')" class="tab-active pb-2 flex items-center gap-2"><span>📋</span> Richieste Moduli Cartacei/PDF</button>
           <button id="mainTab2Btn" onclick="switchMainTab('tab2')" class="text-slate-500 hover:text-slate-800 pb-2 flex items-center gap-2"><span>💳</span> Ticket Digitali (Tessere)</button>
         </div>
 
-        <!-- SUB TAB 1: CARTACEI -->
+        <!-- MAIN TAB 1: CARTACEI -->
         <div id="mainTab1" class="space-y-4">
           <div class="flex items-center gap-4 text-xs font-medium">
             <span>Filtra per Stato:</span>
@@ -171,12 +172,18 @@
           <div id="richiesteList" class="space-y-3"></div>
         </div>
 
-        <!-- SUB TAB 2: TICKET DIGITALI -->
+        <!-- MAIN TAB 2: TICKET DIGITALI -->
         <div id="mainTab2" class="hidden space-y-6">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">💳</span>
+            <h2 class="text-xl font-bold text-slate-800">Tracciamento Tessere Digitali & Calcolo Presenze</h2>
+          </div>
+
+          <!-- SUB TABS -->
           <div class="flex gap-6 border-b border-slate-200 text-xs font-medium pb-2">
-            <button id="subTabABtn" onclick="switchSubTab('subA')" class="subtab-active pb-2">📊 Matrice Tessere Digitali</button>
-            <button id="subTabBBtn" onclick="switchSubTab('subB')" class="text-slate-500 pb-2">📁 Upload & Storico Libro Presenze</button>
-            <button id="subTabCBtn" onclick="switchSubTab('subC')" class="text-slate-500 pb-2">👥 Anagrafica Nominativi con Diritto</button>
+            <button id="subTabABtn" onclick="switchSubTab('subA')" class="subtab-active pb-2 flex items-center gap-1"><span>📊</span> Matrice Tessere Digitali</button>
+            <button id="subTabBBtn" onclick="switchSubTab('subB')" class="text-slate-500 pb-2 flex items-center gap-1"><span>📁</span> Upload & Storico Libro Presenze</button>
+            <button id="subTabCBtn" onclick="switchSubTab('subC')" class="text-slate-500 pb-2 flex items-center gap-1"><span>👥</span> Anagrafica Nominativi con Diritto</button>
           </div>
 
           <!-- SUB A: MATRICE -->
@@ -191,14 +198,14 @@
             <div class="overflow-x-auto border rounded-lg">
               <table class="w-full text-xs text-left border-collapse">
                 <thead class="bg-slate-50 border-b">
-                  <tr><th class="p-2">N° Tessera</th><th class="p-2">Assegnato Momentaneamente a</th><th class="p-2 text-center">Gen</th><th class="p-2 text-center">Feb</th><th class="p-2 text-center">Mar</th><th class="p-2 text-center">Apr</th><th class="p-2 text-center">Mag</th><th class="p-2 text-center">Giu</th><th class="p-2 text-center">Lug</th><th class="p-2 text-center">Ago</th><th class="p-2 text-center">Set</th><th class="p-2 text-center">Ott</th><th class="p-2 text-center">Nov</th><th class="p-2 text-center">Dic</th></tr>
+                  <tr><th class="p-2 border-r">N° Tessera</th><th class="p-2 border-r">Assegnato Momentaneamente a</th><th class="p-2 text-center border-r">Gen</th><th class="p-2 text-center border-r">Feb</th><th class="p-2 text-center border-r">Mar</th><th class="p-2 text-center border-r">Apr</th><th class="p-2 text-center border-r">Mag</th><th class="p-2 text-center border-r">Giu</th><th class="p-2 text-center border-r">Lug</th><th class="p-2 text-center border-r">Ago</th><th class="p-2 text-center border-r">Set</th><th class="p-2 text-center border-r">Ott</th><th class="p-2 text-center border-r">Nov</th><th class="p-2 text-center">Dic</th></tr>
                 </thead>
                 <tbody id="matriceTbody"></tbody>
               </table>
             </div>
             <div class="flex justify-between items-center pt-2 text-xs font-semibold">
               <button onclick="salvaMatriceTessere()" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">💾 Salva Modifiche Tabella Tessere</button>
-              <div>Totale Ticket: <span id="totTicketMatrice" class="text-red-500 font-bold">0</span> | Valore Totale: <span id="totValoreMatrice" class="text-emerald-600 font-bold">€ 0,00</span></div>
+              <div>Totale Ticket Caricati: <span id="totTicketMatrice" class="text-red-500 font-bold">0</span> | Valore Totale: <span id="totValoreMatrice" class="text-emerald-600 font-bold">€ 0,00</span></div>
             </div>
           </div>
 
@@ -206,27 +213,114 @@
           <div id="subTabB" class="hidden space-y-4">
             <div class="stCard p-6 space-y-4">
               <h4 class="font-bold text-xs">📄 Upload Nuovo Libro Presenze Mensile (Colonna AQ)</h4>
+              <p class="text-xs text-slate-500">Vengono letti i valori per le causali <b>PREORD</b> e <b>SMARTW</b> dai dipendenti abilitati nell'anagrafica.</p>
               <div class="grid grid-cols-3 gap-4">
-                <select id="presMese" class="stInput p-2 text-xs"><option value="ottobre">Ottobre</option><option value="novembre">Novembre</option><option value="dicembre">Dicembre</option><option value="gennaio">Gennaio</option></select>
-                <select id="presAnno" class="stInput p-2 text-xs"><option value="2026">2026</option></select>
+                <select id="presMese" class="stInput p-2 text-xs">
+                  <option value="ottobre">Ottobre</option><option value="novembre">Novembre</option><option value="dicembre">Dicembre</option>
+                  <option value="gennaio">Gennaio</option><option value="febbraio">Febbraio</option><option value="marzo">Marzo</option>
+                </select>
+                <select id="presAnno" class="stInput p-2 text-xs"><option value="2026">2026</option><option value="2027">2027</option></select>
                 <input type="file" id="presFile" accept=".xlsx,.xls,.csv" class="text-xs">
               </div>
-              <button onclick="elaboraLibroPresenze()" class="stBtn px-4 py-2 text-xs font-semibold">🧮 Calcola Spettanze</button>
+              <button onclick="elaboraLibroPresenze()" class="stBtn px-4 py-2 text-xs font-semibold">🧮 Calcola Spettanze dal File</button>
             </div>
+
             <div id="risultatiPresenzeBox" class="hidden stCard p-6 space-y-4">
               <h4 class="font-bold text-xs">🧮 Risultati Calcolo Spettanze Ticket</h4>
-              <table class="w-full text-xs text-left border"><thead class="bg-slate-50"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket AQ</th><th class="p-2">Valore</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
+              <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket AQ (PREORD+SMARTW)</th><th class="p-2">Valore (€)</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
               <button onclick="popolaMatriceDaPresenze()" class="bg-red-500 text-white px-4 py-2 rounded-md text-xs font-semibold">⚡ Applica e Popola Matrice Tessere</button>
+            </div>
+
+            <div class="stCard p-6 space-y-3">
+              <h4 class="font-bold text-xs">📚 Archivio e Storico Libri Presenze</h4>
+              <div id="storicoPresenzeList" class="text-xs space-y-2"></div>
             </div>
           </div>
 
-          <!-- SUB C: ANAGRAFICA -->
-          <div id="subTabC" class="hidden space-y-4">
-            <div class="stCard p-6 space-y-4">
-              <h4 class="font-bold text-xs">👥 Gestione Dipendenti con Diritto Ticket</h4>
-              <div class="flex gap-4"><input type="text" id="anagNome" placeholder="Cognome e Nome *" class="stInput p-2 text-xs flex-1"><label class="flex items-center gap-2 text-xs"><input type="checkbox" id="anagDiritto" checked> Ha Diritto</label><button onclick="salvaDipendenteAnagrafica()" class="stBtn px-4 py-2 text-xs">Aggiungi</button></div>
-              <table class="w-full text-xs text-left border mt-4"><thead class="bg-slate-50"><tr><th class="p-2">Nome</th><th class="p-2">Diritto</th><th class="p-2">Azione</th></tr></thead><tbody id="anagraficaTbody"></tbody></table>
+          <!-- SUB C: ANAGRAFICA NOMINATIVI CON DIRITTO (ESATTA DEGLI SCREENSHOT) -->
+          <div id="subTabC" class="hidden space-y-6">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">👥</span>
+              <h2 class="text-2xl font-bold text-slate-800">Anagrafica Personale e Gestione Diritto Ticket</h2>
             </div>
+            <p class="text-xs text-slate-600 -mt-4">Aggiungi o modifica i dipendenti che hanno diritto a <b>1 ticket per giorno lavorato</b>.</p>
+
+            <!-- FORM AGGIUNTA DIPENDENTE -->
+            <div class="stCard p-6 bg-white">
+              <form onsubmit="salvaDipendenteAnagrafica(event)" class="space-y-4">
+                <div class="grid grid-cols-12 gap-6 items-center">
+                  <div class="col-span-9">
+                    <label class="block text-xs font-semibold text-slate-700 mb-2">Cognome e Nome Dipendente *</label>
+                    <div class="stInput px-4 py-2">
+                      <input type="text" id="anagNome" required class="w-full bg-transparent border-none focus:outline-none text-xs">
+                    </div>
+                  </div>
+                  <div class="col-span-3 pt-6">
+                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                      <input type="checkbox" id="anagDiritto" checked class="w-4 h-4 accent-red-500 rounded">
+                      <span>Ha Diritto ai Ticket</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-2">Note (opzionale)</label>
+                  <div class="stInput px-4 py-2">
+                    <input type="text" id="anagNote" class="w-full bg-transparent border-none focus:outline-none text-xs">
+                  </div>
+                </div>
+
+                <div>
+                  <button type="submit" class="stBtn px-4 py-2 text-xs font-semibold shadow-sm">
+                    Aggiungi / Aggiorna Dipendente
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- TABELLA LISTA DIPENDENTI REGISTRATI (ESATTA DEGLI SCREENSHOT) -->
+            <div class="space-y-3">
+              <h3 class="text-lg font-bold text-slate-800">Lista Dipendenti Registrati</h3>
+              
+              <div class="stCard overflow-hidden">
+                <table class="w-full text-xs text-left border-collapse">
+                  <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                    <tr>
+                      <th class="p-2.5 border-r w-12 text-center text-slate-400">#</th>
+                      <th class="p-2.5 border-r w-1/3">Cognome e Nome</th>
+                      <th class="p-2.5 border-r w-1/3 text-center">Avente Diritto Ticket</th>
+                      <th class="p-2.5 w-1/3">Note</th>
+                    </tr>
+                  </thead>
+                  <tbody id="anagraficaTbody" class="divide-y divide-slate-100">
+                    <!-- Popolato dinamicamente da JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- ACCORDION RIMUOVI DIPENDENTE (ESATTO DEGLI SCREENSHOT) -->
+            <div class="stCard overflow-hidden">
+              <div class="bg-slate-50/80 px-4 py-2.5 border-b border-slate-200 text-xs text-slate-700 flex items-center gap-2 font-medium">
+                <span>⌄</span>
+                <span>🗑️</span>
+                <span>Rimuovi Dipendente dall'Anagrafica</span>
+              </div>
+              <div class="p-6 bg-white space-y-4">
+                <label class="block text-xs font-semibold text-slate-700">Seleziona Dipendente da Rimuovere:</label>
+                <div class="stInput px-4 py-2">
+                  <select id="selectDipendenteRimuovere" class="w-full bg-transparent border-none focus:outline-none text-xs text-slate-800 appearance-none">
+                    <!-- Popolato dinamicamente da JS -->
+                  </select>
+                </div>
+                <div>
+                  <button type="button" onclick="confermaRimuoviDipendente()" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm transition">
+                    Rimuovi Dipendente
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -306,7 +400,26 @@
 
         <div class="space-y-4">
           <h3 class="text-sm font-bold text-slate-800">📋 Riepilogo Ordini & Giacenza Ticket</h3>
-          <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Fattura</th><th class="p-2">Valore</th><th class="p-2">Acquistati</th><th class="p-2">Erogati</th><th class="p-2">Residuo Prec.</th><th class="p-2">Ticket Residui TOT</th><th class="p-2">Azione</th></tr></thead><tbody id="ordiniTbody"></tbody></table>
+          <div class="stCard overflow-hidden">
+            <table class="w-full text-xs text-left border-collapse">
+              <thead class="bg-slate-50 border-b">
+                <tr><th class="p-2.5">Fattura/Ordine</th><th class="p-2.5">Valore Unitario</th><th class="p-2.5">Acquistati</th><th class="p-2.5">Erogati</th><th class="p-2.5">Residuo Prec.</th><th class="p-2.5">Ticket Residui TOT</th><th class="p-2.5">Azione</th></tr>
+              </thead>
+              <tbody id="ordiniTbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="space-y-4 pt-4 border-t">
+          <h3 class="text-sm font-bold text-slate-800">📤 Sezione Ticket Erogati</h3>
+          <div class="stCard overflow-hidden">
+            <table class="w-full text-xs text-left border-collapse">
+              <thead class="bg-slate-50 border-b">
+                <tr><th class="p-2.5">Dipendente</th><th class="p-2.5">Email</th><th class="p-2.5">Periodo</th><th class="p-2.5">N° Ticket Erogati</th><th class="p-2.5">Fattura / Ordine</th></tr>
+              </thead>
+              <tbody id="erogatiTbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -317,9 +430,26 @@
     const PASSWORD_HR = "pallinerosa26!";
     let isHrAuthenticated = false;
 
+    const dipendentiDefault = [
+      { nome: "DI VITO DANIELA", diritto: true, note: "" },
+      { nome: "GISOTTI EDUARDO", diritto: true, note: "" },
+      { nome: "LANDRO MARIETTA", diritto: true, note: "" },
+      { nome: "LOBASCIO FEDELE", diritto: true, note: "" },
+      { nome: "LUCCINI GIANLUCA", diritto: true, note: "" },
+      { nome: "MARUFFI FABRIZIO", diritto: true, note: "" },
+      { nome: "MENNA ANTONIO", diritto: true, note: "" },
+      { nome: "MOLINELLI CESARE", diritto: true, note: "" },
+      { nome: "PALMA LUIGI", diritto: true, note: "" },
+      { nome: "PANDOLFINI ELISABETTA", diritto: true, note: "" },
+      { nome: "POIRE' MASSIMO", diritto: true, note: "" },
+      { nome: "AMIRI ELINA", diritto: true, note: "" }
+    ];
+
     function initDB() {
       if(!localStorage.getItem("db_richieste")) localStorage.setItem("db_richieste", JSON.stringify([]));
       if(!localStorage.getItem("db_ordini")) localStorage.setItem("db_ordini", JSON.stringify([]));
+      if(!localStorage.getItem("db_storico_presenze")) localStorage.setItem("db_storico_presenze", JSON.stringify([]));
+      if(!localStorage.getItem("db_anagrafica")) localStorage.setItem("db_anagrafica", JSON.stringify(dipendentiDefault));
       if(!localStorage.getItem("db_matrice")) {
         let mat = [];
         for(let i=1; i<=30; i++) {
@@ -329,9 +459,6 @@
           mat.push(row);
         }
         localStorage.setItem("db_matrice", JSON.stringify(mat));
-      }
-      if(!localStorage.getItem("db_anagrafica")) {
-        localStorage.setItem("db_anagrafica", JSON.stringify([{ nome_cognome: "Mario Rossi", ha_diritto: true }]));
       }
     }
     initDB();
@@ -391,26 +518,38 @@
 
     function handleFormSubmit(e) {
       e.preventDefault();
-      let reqs = getDB("db_richieste");
-      reqs.push({
-        id: Date.now(),
-        email: document.getElementById('reqEmail').value,
-        nome_cognome: document.getElementById('reqNome').value,
-        mese: document.getElementById('reqMese').value,
-        anno: document.getElementById('reqAnno').value,
-        num_ticket: parseInt(document.getElementById('ticketCount').value),
-        stato: "In lavorazione",
-        ordine_fattura: null
-      });
-      setDB("db_richieste", reqs);
-      alert('Richiesta inviata con successo!');
-      e.target.reset();
+      const fileInput = document.getElementById('reqFile');
+      const reader = new FileReader();
+
+      reader.onload = function(evt) {
+        let reqs = getDB("db_richieste");
+        reqs.push({
+          id: Date.now(),
+          email: document.getElementById('reqEmail').value,
+          nome_cognome: document.getElementById('reqNome').value,
+          mese: document.getElementById('reqMese').value,
+          anno: document.getElementById('reqAnno').value,
+          num_ticket: parseInt(document.getElementById('ticketCount').value),
+          file_url: evt.target.result,
+          file_name: fileInput.files[0].name,
+          stato: "In lavorazione",
+          ordine_fattura: null
+        });
+        setDB("db_richieste", reqs);
+        alert('✅ Richiesta inviata con successo!');
+        e.target.reset();
+        document.getElementById('fileNameDisplay').textContent = '200MB per file • PDF, PNG, JPG';
+        document.getElementById('fileNameDisplay').className = 'text-xs text-slate-400';
+      };
+
+      if(fileInput.files[0]) reader.readAsDataURL(fileInput.files[0]);
     }
 
     function renderHRGestione() {
       renderRichiesteHR();
       renderMatrice();
       renderAnagrafica();
+      renderStoricoPresenze();
     }
 
     function switchMainTab(t) {
@@ -421,31 +560,48 @@
     }
 
     function switchSubTab(s) {
-      document.getElementById('subTabABtn').className = s === 'subA' ? 'subtab-active pb-2' : 'text-slate-500 pb-2';
-      document.getElementById('subTabBBtn').className = s === 'subB' ? 'subtab-active pb-2' : 'text-slate-500 pb-2';
-      document.getElementById('subTabCBtn').className = s === 'subC' ? 'subtab-active pb-2' : 'text-slate-500 pb-2';
+      document.getElementById('subTabABtn').className = s === 'subA' ? 'subtab-active pb-2 flex items-center gap-1' : 'text-slate-500 pb-2 flex items-center gap-1';
+      document.getElementById('subTabBBtn').className = s === 'subB' ? 'subtab-active pb-2 flex items-center gap-1' : 'text-slate-500 pb-2 flex items-center gap-1';
+      document.getElementById('subTabCBtn').className = s === 'subC' ? 'subtab-active pb-2 flex items-center gap-1' : 'text-slate-500 pb-2 flex items-center gap-1';
       document.getElementById('subTabA').classList.toggle('hidden', s !== 'subA');
       document.getElementById('subTabB').classList.toggle('hidden', s !== 'subB');
       document.getElementById('subTabC').classList.toggle('hidden', s !== 'subC');
+      if(s === 'subC') renderAnagrafica();
     }
 
     function renderRichiesteHR() {
       const container = document.getElementById('richiesteList');
       const reqs = getDB("db_richieste");
       const ordini = getDB("db_ordini");
+      const filtro = document.querySelector('input[name="filtroStato"]:checked').value;
+
       container.innerHTML = "";
-      if(reqs.length === 0) {
+      const list = reqs.filter(r => filtro === 'Tutti' || r.stato === filtro);
+
+      if(list.length === 0) {
         container.innerHTML = `<div class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4">Nessuna richiesta ricevuta al momento.</div>`;
         return;
       }
-      reqs.forEach(r => {
+
+      list.forEach(r => {
         let isPronto = r.stato === 'Pronti';
-        let ordOpts = ordini.map(o => `<option value="${o.fattura}">${o.fattura}</option>`).join('');
+        let ordOpts = ordini.map(o => `<option value="${o.fattura}" ${r.ordine_fattura === o.fattura ? 'selected':''}>${o.fattura}</option>`).join('');
         container.innerHTML += `
-          <div class="stCard p-4 bg-white space-y-2 text-xs">
-            <div class="flex justify-between font-bold"><span>${r.nome_cognome}</span><span>${isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE'}</span></div>
-            <div>${r.email} | ${r.mese} ${r.anno} | ${r.num_ticket} Ticket</div>
-            ${!isPronto ? `<div class="flex gap-2"><select id="selOrd_\${r.id}" class="stInput px-2 py-1">\${ordOpts || '<option>Nessun Ordine</option>'}</select><button onclick="segnaPronto(\${r.id})" class="stBtn px-3 py-1">Segna come PRONTI</button></div>` : ''}
+          <div class="stCard p-4 bg-white space-y-3 text-xs">
+            <div class="flex justify-between items-center font-bold">
+              <span>${r.nome_cognome} — <span class="${isPronto ? 'text-emerald-600':'text-amber-600'}">${isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE'}</span></span>
+              <button onclick="eliminaRichiesta(${r.id})" class="text-red-500 hover:underline">🗑️ Elimina</button>
+            </div>
+            <div class="text-slate-600"><b>Email:</b> ${r.email} | <b>Periodo:</b> ${r.mese} ${r.anno} | <b>N° Ticket:</b> ${r.num_ticket}</div>
+            <div class="flex items-center gap-4 pt-1">
+              <a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>
+              ${!isPronto ? `
+                <div class="flex items-center gap-2">
+                  <select id="selOrd_\${r.id}" class="stInput px-2 py-1 text-xs">\${ordOpts || '<option>Nessun Ordine</option>'}</select>
+                  <button onclick="segnaPronto(\${r.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1 rounded text-xs">Segna come PRONTI 🚀</button>
+                </div>
+              ` : `<span class="text-xs text-emerald-700 font-semibold">Associato all'Ordine: \${r.ordine_fattura}</span>`}
+            </div>
           </div>
         `;
       });
@@ -454,10 +610,20 @@
     function segnaPronto(id) {
       let reqs = getDB("db_richieste");
       let sel = document.getElementById(`selOrd_${id}`);
+      if(!sel || !sel.value || sel.value === 'Nessun Ordine') { alert('Seleziona un ordine dal magazzino.'); return; }
       let req = reqs.find(r => r.id === id);
-      if(req && sel) {
+      if(req) {
         req.stato = 'Pronti';
         req.ordine_fattura = sel.value;
+        setDB("db_richieste", reqs);
+        renderHRGestione();
+        renderHRMagazzino();
+      }
+    }
+
+    function eliminaRichiesta(id) {
+      if(confirm('Confermi eliminazione?')) {
+        let reqs = getDB("db_richieste").filter(r => r.id !== id);
         setDB("db_richieste", reqs);
         renderHRGestione();
         renderHRMagazzino();
@@ -472,21 +638,40 @@
       let tot = 0;
       mat.forEach(r => {
         let mCells = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"].map(m => {
-          tot += r[m] || 0;
-          return `<td class="p-1 border-r text-center"><input type="number" value="${r[m]||0}" data-tess="${r.numero_tessera}" data-mese="${m}" class="w-10 text-center text-xs"></td>`;
+          let val = r[m] || 0;
+          tot += val;
+          return `<td class="p-1 border-r text-center"><input type="number" min="0" value="${val}" data-tess="${r.numero_tessera}" data-mese="${m}" class="w-10 text-center border-none focus:ring-1 focus:ring-red-400 text-xs"></td>`;
         }).join('');
-        tbody.innerHTML += `<tr class="border-b"><td class="p-2 border-r">${r.numero_tessera}</td><td class="p-2 border-r"><input type="text" value="${r.assegnato_a||''}" data-tess="${r.numero_tessera}" class="stInput px-2 py-1 w-full text-xs"></td>${mCells}</tr>`;
+        tbody.innerHTML += `<tr class="border-b"><td class="p-2 border-r font-medium">${r.numero_tessera}</td><td class="p-2 border-r"><input type="text" value="${r.assegnato_a||''}" data-tess="${r.numero_tessera}" data-field="assegnato_a" class="stInput px-2 py-1 w-full text-xs"></td>${mCells}</tr>`;
       });
-      document.getElementById('totTicketMatrice').textContent = tot;
-      document.getElementById('totValoreMatrice').textContent = "€ " + (tot * 5.20).toFixed(2);
+      document.getElementById('totTicketMatrice').textContent = tot + " ticket";
+      document.getElementById('totValoreMatrice').textContent = "€ " + (tot * 5.20).toFixed(2).replace('.', ',');
     }
 
-    function salvaMatriceTessere() { alert('✅ Matrice tessere salvata!'); }
+    function salvaMatriceTessere() {
+      const anno = parseInt(document.getElementById('matriceAnno').value);
+      let mat = getDB("db_matrice");
+      document.querySelectorAll('#matriceTbody input').forEach(input => {
+        let tess = input.getAttribute('data-tess');
+        let mese = input.getAttribute('data-mese');
+        let field = input.getAttribute('data-field');
+        let row = mat.find(m => m.numero_tessera === tess && m.anno === anno);
+        if(row) {
+          if(mese) row[mese] = parseInt(input.value) || 0;
+          if(field) row[field] = input.value;
+        }
+      });
+      setDB("db_matrice", mat);
+      alert('✅ Matrice tessere salvata!');
+      renderMatrice();
+    }
+
     function addNuovaTesseraPrompt() {
-      let num = prompt("Numero tessera:");
+      let num = prompt("Inserisci Numero Nuova Tessera:");
       if(num) {
         let mat = getDB("db_matrice");
-        let r = { numero_tessera: num, assegnato_a: "", anno: 2026 };
+        let anno = parseInt(document.getElementById('matriceAnno').value);
+        let r = { numero_tessera: num, assegnato_a: "", anno: anno };
         ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"].forEach(m => r[m] = 0);
         mat.push(r);
         setDB("db_matrice", mat);
@@ -496,59 +681,162 @@
 
     let tempPresenze = [];
     function elaboraLibroPresenze() {
-      let file = document.getElementById('presFile').files[0];
-      if(!file) return alert('Seleziona un file!');
+      let fileInput = document.getElementById('presFile');
+      if(!fileInput.files[0]) { alert('Seleziona un file!'); return; }
+      let mese = document.getElementById('presMese').value;
+      let anno = document.getElementById('presAnno').value;
+      let anag = getDB("db_anagrafica").filter(a => a.diritto);
+
       let reader = new FileReader();
       reader.onload = function(e) {
         let wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
         let json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
-        let anag = getDB("db_anagrafica");
         let tbody = document.getElementById('presenzeResultTbody');
         tbody.innerHTML = "";
         tempPresenze = [];
+
         anag.forEach(a => {
           let cnt = 0;
+          let trovato = false;
           json.forEach(row => {
             let s = row.join(" ").toLowerCase();
-            if(s.includes(a.nome_cognome.toLowerCase()) && (s.includes("preord") || s.includes("smartw"))) {
+            if(s.includes(a.nome.toLowerCase())) trovato = true;
+            if(trovato && (s.includes("preord") || s.includes("smartw"))) {
               let v = parseInt(row[42]); if(!isNaN(v)) cnt += v;
             }
           });
-          tempPresenze.push({ nome: a.nome_cognome, count: cnt, mese: document.getElementById('presMese').value });
-          tbody.innerHTML += `<tr class="border-b"><td class="p-2">${a.nome_cognome}</td><td class="p-2">✅ SI</td><td class="p-2 font-bold">${cnt}</td><td class="p-2">€ ${(cnt*5.2).toFixed(2)}</td></tr>`;
+          tempPresenze.push({ nome: a.nome, count: cnt, mese: mese, anno: anno });
+          tbody.innerHTML += `<tr class="border-b"><td class="p-2 font-medium">${a.nome}</td><td class="p-2">${trovato ? '✅ SI' : '❌ NO'}</td><td class="p-2 font-bold">${cnt}</td><td class="p-2 text-emerald-700">€ ${(cnt*5.2).toFixed(2)}</td></tr>`;
         });
+
+        let st = getDB("db_storico_presenze");
+        st.push({ id: Date.now(), mese: mese, anno: anno, file_name: fileInput.files[0].name });
+        setDB("db_storico_presenze", st);
+        renderStoricoPresenze();
         document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
       };
-      reader.readAsArrayBuffer(file);
+      reader.readAsArrayBuffer(fileInput.files[0]);
     }
 
-    function popolaMatriceDaPresenze() { alert('⚡ Matrice Tessere Popolata!'); }
+    function popolaMatriceDaPresenze() {
+      if(tempPresenze.length === 0) return;
+      let mat = getDB("db_matrice");
+      tempPresenze.forEach(item => {
+        let row = mat.find(m => m.assegnato_a.toLowerCase().includes(item.nome.toLowerCase()) && m.anno === parseInt(item.anno));
+        if(row) row[item.mese.toLowerCase()] = item.count;
+      });
+      setDB("db_matrice", mat);
+      alert('✅ Matrice tessere popolata con i dati del Libro Presenze!');
+      renderMatrice();
+    }
+
+    function renderStoricoPresenze() {
+      const container = document.getElementById('storicoPresenzeList');
+      const st = getDB("db_storico_presenze");
+      container.innerHTML = st.map(s => `
+        <div class="flex justify-between items-center bg-slate-50 p-2 rounded border">
+          <span>📁 <b>${s.mese.toUpperCase()} ${s.anno}</b> — ${s.file_name}</span>
+          <span class="text-xs text-slate-400">Archiviato</span>
+        </div>
+      `).join('') || '<p class="text-slate-400">Nessun file archiviato nello storico.</p>';
+    }
 
     function renderAnagrafica() {
-      let tbody = document.getElementById('anagraficaTbody');
-      let list = getDB("db_anagrafica");
-      tbody.innerHTML = list.map(a => `<tr class="border-b"><td class="p-2">${a.nome_cognome}</td><td class="p-2">${a.ha_diritto?'Si':'No'}</td><td class="p-2">Rimuovi</td></tr>`).join('');
+      const tbody = document.getElementById('anagraficaTbody');
+      const select = document.getElementById('selectDipendenteRimuovere');
+      const list = getDB("db_anagrafica");
+
+      tbody.innerHTML = "";
+      select.innerHTML = "";
+
+      if(list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">Nessun dipendente registrato.</td></tr>`;
+        select.innerHTML = `<option value="">Nessun dipendente presente</option>`;
+        return;
+      }
+
+      list.forEach((dip, idx) => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50/60">
+            <td class="p-2.5 border-r text-center text-slate-400 font-medium">${idx + 11}</td>
+            <td class="p-2.5 border-r font-semibold text-slate-800">${dip.nome}</td>
+            <td class="p-2.5 border-r text-center">
+              <input type="checkbox" ${dip.diritto ? 'checked' : ''} disabled class="w-4 h-4 accent-slate-500 rounded cursor-default">
+            </td>
+            <td class="p-2.5 text-slate-500">${dip.note || ''}</td>
+          </tr>
+        `;
+        select.innerHTML += `<option value="${idx}">${dip.nome}</option>`;
+      });
     }
 
-    function salvaDipendenteAnagrafica() {
-      let nome = document.getElementById('anagNome').value;
+    function salvaDipendenteAnagrafica(e) {
+      e.preventDefault();
+      const nome = document.getElementById('anagNome').value.trim();
+      const diritto = document.getElementById('anagDiritto').checked;
+      const note = document.getElementById('anagNote').value.trim();
       if(!nome) return;
-      let a = getDB("db_anagrafica");
-      a.push({ nome_cognome: nome, ha_diritto: true });
-      setDB("db_anagrafica", a);
+
+      let list = getDB("db_anagrafica");
+      list.push({ nome: nome.toUpperCase(), diritto: diritto, note: note });
+      setDB("db_anagrafica", list);
+
+      document.getElementById('anagNome').value = "";
+      document.getElementById('anagNote').value = "";
+      renderAnagrafica();
+    }
+
+    function confermaRimuoviDipendente() {
+      const select = document.getElementById('selectDipendenteRimuovere');
+      const idx = select.value;
+      if(idx === "" || idx === null) return;
+
+      let list = getDB("db_anagrafica");
+      const nomeRimosso = list[idx].nome;
+      list.splice(idx, 1);
+      setDB("db_anagrafica", list);
+
+      alert(`✅ Dipendente "${nomeRimosso}" rimosso con successo dall'anagrafica!`);
       renderAnagrafica();
     }
 
     function renderHRMagazzino() {
-      let tbody = document.getElementById('ordiniTbody');
-      let ordini = getDB("db_ordini");
-      let reqs = getDB("db_richieste").filter(r => r.stato === 'Pronti');
-      tbody.innerHTML = "";
-      if(ordini.length === 0) return;
+      const ordiniTbody = document.getElementById('ordiniTbody');
+      const erogatiTbody = document.getElementById('erogatiTbody');
+      const ordini = getDB("db_ordini");
+      const reqs = getDB("db_richieste").filter(r => r.stato === 'Pronti');
+
+      ordiniTbody.innerHTML = "";
+      erogatiTbody.innerHTML = "";
+
       ordini.forEach(o => {
-        let erogati = reqs.filter(r => r.ordine_fattura === o.fattura).reduce((a, b) => a + b.num_ticket, 0) + o.erogati_iniziali;
-        let res = Math.max(0, (o.acquistati + o.residuo_precedente) - erogati);
-        tbody.innerHTML += `<tr class="border-b"><td class="p-2 font-bold">${o.fattura}</td><td class="p-2">€ ${o.valore}</td><td class="p-2">${o.acquistati}</td><td class="p-2">${erogati}</td><td class="p-2">${o.residuo_precedente}</td><td class="p-2 font-bold text-emerald-600">${res}</td><td class="p-2"><button onclick="eliminaOrdine(${o.id})" class="text-red-500">Elimina</button></td></tr>`;
+        let erogatiRichieste = reqs.filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + r.num_ticket, 0);
+        let erogatiTotali = o.erogati_iniziali + erogatiRichieste;
+        let residuoTotale = Math.max(0, (o.acquistati + o.residuo_precedente) - erogatiTotali);
+
+        ordiniTbody.innerHTML += `
+          <tr class="hover:bg-slate-50/60">
+            <td class="p-2.5 font-bold">${o.fattura}</td>
+            <td class="p-2.5">€ ${o.valore}</td>
+            <td class="p-2.5">${o.acquistati}</td>
+            <td class="p-2.5 text-amber-600 font-semibold">${erogatiTotali}</td>
+            <td class="p-2.5">${o.residuo_precedente}</td>
+            <td class="p-2.5 text-emerald-600 font-bold">${residuoTotale}</td>
+            <td class="p-2.5"><button onclick="eliminaOrdine(${o.id})" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
+          </tr>
+        `;
+      });
+
+      reqs.forEach(r => {
+        erogatiTbody.innerHTML += `
+          <tr class="hover:bg-slate-50/60">
+            <td class="p-2.5 font-medium">${r.nome_cognome}</td>
+            <td class="p-2.5">${r.email}</td>
+            <td class="p-2.5">${r.mese} ${r.anno}</td>
+            <td class="p-2.5 font-bold">${r.num_ticket}</td>
+            <td class="p-2.5 text-indigo-600 font-semibold">${r.ordine_fattura}</td>
+          </tr>
+        `;
       });
     }
 
@@ -564,15 +852,17 @@
         residuo_precedente: parseInt(document.getElementById('residuoPrecedente').value)
       });
       setDB("db_ordini", ordini);
-      alert('Ordine salvato con successo!');
+      alert('✅ Ordine salvato!');
       e.target.reset();
       renderHRMagazzino();
     }
 
     function eliminaOrdine(id) {
-      let ordini = getDB("db_ordini").filter(o => o.id !== id);
-      setDB("db_ordini", ordini);
-      renderHRMagazzino();
+      if(confirm('Confermi eliminazione ordine?')) {
+        let ordini = getDB("db_ordini").filter(o => o.id !== id);
+        setDB("db_ordini", ordini);
+        renderHRMagazzino();
+      }
     }
   </script>
 </body>

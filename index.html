@@ -65,7 +65,7 @@
     </div>
   </aside>
 
-  <!-- CONTENUTO PRINCIPALE FULL WIDTH (SENZA MAX-WIDTH) -->
+  <!-- CONTENUTO PRINCIPALE FULL WIDTH -->
   <main class="flex-1 p-10 overflow-x-auto w-full max-w-none">
     <div class="flex justify-end mb-4">
       <span class="text-slate-400 text-xl font-bold cursor-pointer hover:text-slate-600">⋮</span>
@@ -198,7 +198,7 @@
             </div>
 
             <div class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-3 flex items-center gap-2 font-medium">
-              <span>💡</span> Inserisci o modifica i dati nelle celle e salva.
+              <span>💡</span> Inserisci o modifica i dati nelle celle e salva. Le assegnazioni e le nuove tessere si propagano automaticamente per gli anni successivi.
             </div>
 
             <div class="overflow-x-auto border rounded-lg w-full">
@@ -220,7 +220,7 @@
               </button>
             </div>
 
-            <!-- RECAP NUMERO TICKET E VALORE ECONOMICO (ESATTO DEGLI SCREENSHOT) -->
+            <!-- RECAP NUMERO TICKET E VALORE ECONOMICO -->
             <div class="pt-6 border-t border-slate-200 mt-6 grid grid-cols-2 gap-8 w-full">
               <div>
                 <p id="labelTotTicket" class="text-xs text-slate-500 font-semibold mb-1">Totale Ticket Caricati (2026)</p>
@@ -312,7 +312,7 @@
               </form>
             </div>
 
-            <!-- TABELLA LISTA DIPENDENTI REGISTRATI (NUMERAZIONE DA 1) -->
+            <!-- TABELLA LISTA DIPENDENTI REGISTRATI -->
             <div class="space-y-3 w-full">
               <h3 class="text-lg font-bold text-slate-800">Lista Dipendenti Registrati</h3>
               
@@ -706,15 +706,15 @@
         tbody.innerHTML += `<tr class="border-b hover:bg-slate-50/50"><td class="p-2.5 border-r font-medium text-slate-700">${r.numero_tessera}</td><td class="p-2.5 border-r">${selectDipHtml}</td>${mCells}</tr>`;
       });
 
-      // AGGIORNAMENTO RECAP FISCALE IN FONDO ALLA PAGINA
       document.getElementById('labelTotTicket').textContent = `Totale Ticket Caricati (${anno})`;
       document.getElementById('labelTotValore').textContent = `Valore Economico Totale (${anno})`;
       document.getElementById('totTicketMatrice').textContent = tot + " ticket";
       document.getElementById('totValoreMatrice').textContent = "€ " + (tot * 5.20).toFixed(2).replace('.', ',');
     }
 
+    // SALVATAGGIO MATRICE CON PROPAGAZIONE AUTOMATICA PER TUTTI GLI ANNI SUCCESSIVI
     function salvaMatriceTessere() {
-      const anno = parseInt(document.getElementById('matriceAnno').value);
+      const annoCorrente = parseInt(document.getElementById('matriceAnno').value);
       let mat = getDB("db_matrice");
 
       document.querySelectorAll('#matriceTbody select, #matriceTbody input').forEach(el => {
@@ -722,35 +722,50 @@
         let mese = el.getAttribute('data-mese');
         let field = el.getAttribute('data-field');
 
-        let row = mat.find(m => m.numero_tessera === tess && m.anno === anno);
-        if(row) {
-          if(mese) row[mese] = parseInt(el.value) || 0;
-          if(field) row[field] = el.value;
+        // Aggiorna l'anno corrente
+        let rowCorrente = mat.find(m => m.numero_tessera === tess && m.anno === annoCorrente);
+        if(rowCorrente) {
+          if(mese) rowCorrente[mese] = parseInt(el.value) || 0;
+          if(field) {
+            rowCorrente[field] = el.value;
+            // Propaga l'assegnazione della tessera a tutti gli anni successivi (da annoCorrente+1 a 2060)
+            for(let a = annoCorrente + 1; a <= 2060; a++) {
+              let rowFutura = mat.find(m => m.numero_tessera === tess && m.anno === a);
+              if(rowFutura) rowFutura[field] = el.value;
+            }
+          }
         }
       });
 
       setDB("db_matrice", mat);
-      alert('✅ Matrice tessere salvata con successo!');
+      alert('✅ Matrice salvata! Le modifiche e le assegnazioni sono state applicate anche a tutti gli anni successivi.');
       renderMatrice();
     }
 
+    // AGGIUNTA TESSERA CON PROPAGAZIONE AUTOMATICA A TUTTI GLI ANNI SUCCESSIVI
     function addNuovaTesseraPrompt() {
       let num = prompt("Inserisci Numero Nuova Tessera:");
       if(num) {
         let mat = getDB("db_matrice");
-        let anno = parseInt(document.getElementById('matriceAnno').value);
-        let listaMesiTabella = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
+        let annoCorrente = parseInt(document.getElementById('matriceAnno').value);
 
-        let r = { numero_tessera: num, assegnato_a: "", anno: anno };
-        listaMesiTabella.forEach(m => r[m.toLowerCase()] = 0);
+        // Aggiunge la tessera per l'anno selezionato e per tutti gli anni futuri fino al 2060
+        for(let a = annoCorrente; a <= 2060; a++) {
+          let listaMesiTabella = (a === 2026) ? MESI_2026 : MESI_TUTTI;
+          let rowGiàPresente = mat.find(m => m.numero_tessera === num && m.anno === a);
 
-        mat.push(r);
+          if(!rowGiàPresente) {
+            let r = { numero_tessera: num, assegnato_a: "", anno: a };
+            listaMesiTabella.forEach(m => r[m.toLowerCase()] = 0);
+            mat.push(r);
+          }
+        }
+
         setDB("db_matrice", mat);
         renderMatrice();
       }
     }
 
-    // RENDER TABELLA ANAGRAFICA CON NUMERAZIONE PARTENTE DA 1
     function renderAnagrafica() {
       const tbody = document.getElementById('anagraficaTbody');
       const select = document.getElementById('selectDipendenteRimuovere');

@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestione Ticket HR</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', -apple-system, sans-serif; background-color: #ffffff; color: #334155; }
+    .sidebar-bg { background-color: #f1f4f9; }
+    .input-custom { background-color: #f1f4f9; border: 1px solid transparent; transition: all 0.2s; }
+    .input-custom:focus { background-color: #ffffff; border-color: #cbd5e1; outline: none; box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2); }
+    .card-border { border: 1px solid #e2e8f0; border-radius: 8px; }
+    .tab-active { border-bottom: 2px solid #ef4444; color: #ef4444; font-weight: 600; }
+    .subtab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
+    .stepper-btn { user-select: none; }
+  </style>
+</head>
+<body class="bg-white min-h-screen flex text-slate-700">
+
+  <!-- SIDEBAR DI NAVIGAZIONE -->
+  <aside class="w-80 sidebar-bg border-r border-slate-200 p-6 flex flex-col justify-between shrink-0 min-h-screen">
+    <div>
+      <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📌</span>
+          <h2 class="text-xl font-bold text-slate-800">Menu Navigazione</h2>
+        </div>
+        <button class="text-slate-400 hover:text-slate-600 font-bold text-lg">«</button>
+      </div>
+
+      <p class="text-sm font-medium text-slate-600 mb-4">Seleziona Sezione:</p>
+      
+      <nav class="space-y-3">
+        <label class="flex items-center gap-3 cursor-pointer group">
+          <input type="radio" name="section" value="richiesta" checked onchange="switchSection('richiesta')" class="w-4 h-4 text-red-500 accent-red-500 cursor-pointer">
+          <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Nuova Richiesta</span>
+        </label>
+        <label class="flex items-center gap-3 cursor-pointer group">
+          <input type="radio" name="section" value="gestione" onchange="switchSection('gestione')" class="w-4 h-4 text-red-500 accent-red-500 cursor-pointer">
+          <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">HR - Gestione Richieste</span>
+        </label>
+        <label class="flex items-center gap-3 cursor-pointer group">
+          <input type="radio" name="section" value="magazzino" onchange="switchSection('magazzino')" class="w-4 h-4 text-red-500 accent-red-500 cursor-pointer">
+          <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">HR - Magazzino & Ordini</span>
+        </label>
+      </nav>
+    </div>
+
+    <!-- Area Riservata HR -->
+    <div id="hrAuthBox" class="pt-6 border-t border-slate-300/60 hidden">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-base">🔒</span>
+        <h3 class="text-base font-bold text-slate-800">Area Riservata HR</h3>
+      </div>
+      <p class="text-xs text-slate-600 mb-2 font-medium">Inserisci Password HR:</p>
+      <div class="relative">
+        <input type="password" id="hrPasswordInput" oninput="checkPassword()" placeholder="••••••••••••" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm pr-9 focus:outline-none focus:border-slate-400">
+        <button type="button" onclick="togglePasswordVisibility('hrPasswordInput')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+          👁️
+        </button>
+      </div>
+      <p id="pwdError" class="text-xs text-red-500 mt-1 hidden">❌ Password errata</p>
+    </div>
+  </aside>
+
+  <!-- CONTENUTO PRINCIPALE -->
+  <main class="flex-1 p-10 max-w-7xl overflow-x-auto">
+    <div class="flex justify-end mb-4">
+      <button class="text-slate-500 hover:text-slate-700 text-xl font-bold">⋮</button>
+    </div>
+
+    <!-- SEZIONE 1: NUOVA RICHIESTA -->
+    <section id="section-richiesta" class="block">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-3xl">🎟️</span>
+        <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Richiesta</h1>
+      </div>
+      <p class="text-sm text-slate-600 mb-8">Compila i campi sottostanti e carica la foto o il PDF del modulo firmato.</p>
+
+      <div class="card-border p-8 bg-white max-w-5xl">
+        <form onsubmit="handleFormSubmit(event)" class="space-y-6">
+          <div class="grid grid-cols-2 gap-6">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-2">Email aziendale *</label>
+              <input type="email" id="reqEmail" required class="w-full input-custom rounded-lg px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-2">Mese *</label>
+              <select id="reqMese" required class="w-full input-custom rounded-lg px-4 py-2.5 text-sm">
+                <option value="Gennaio">Gennaio</option><option value="Febbraio">Febbraio</option><option value="Marzo">Marzo</option>
+                <option value="Aprile">Aprile</option><option value="Maggio">Maggio</option><option value="Giugno">Giugno</option>
+                <option value="Luglio">Luglio</option><option value="Agosto">Agosto</option><option value="Settembre">Settembre</option>
+                <option value="Ottobre">Ottobre</option><option value="Novembre">Novembre</option><option value="Dicembre">Dicembre</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-2">Cognome e Nome *</label>
+              <input type="text" id="reqNome" required class="w-full input-custom rounded-lg px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-2">N° totale Ticket richiesti *</label>
+              <div class="flex items-center input-custom rounded-lg px-4 py-1.5">
+                <input type="number" id="ticketCount" value="1" min="1" required class="w-full bg-transparent text-sm border-none focus:outline-none">
+                <div class="flex items-center gap-3 text-slate-500 font-semibold ml-2">
+                  <button type="button" onclick="changeCount('ticketCount', -1)" class="stepper-btn hover:text-slate-800 text-base font-bold px-1">−</button>
+                  <button type="button" onclick="changeCount('ticketCount', 1)" class="stepper-btn hover:text-slate-800 text-base font-bold px-1">+</button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-2">Anno *</label>
+              <select id="reqAnno" required class="w-full input-custom rounded-lg px-4 py-2.5 text-sm">
+                <option value="2026">2026</option><option value="2027">2027</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-2">Carica foto o PDF del modulo firmato *</label>
+            <div class="input-custom rounded-lg p-3 flex items-center gap-4">
+              <label class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium px-4 py-2 rounded-md shadow-sm cursor-pointer flex items-center gap-2">
+                <span>⬆</span> Upload
+                <input type="file" id="reqFile" required accept=".pdf,.png,.jpg,.jpeg" class="hidden" onchange="handleFileSelect(this)">
+              </label>
+              <span id="fileNameDisplay" class="text-xs text-slate-400">200MB per file • PDF, PNG, JPG</span>
+            </div>
+          </div>
+
+          <div>
+            <button type="submit" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-5 py-2.5 rounded-md shadow-sm transition">
+              Invia Richiesta
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- PROTETTO: HR GESTIONE RICHIESTE -->
+    <section id="section-gestione" class="hidden">
+      <div id="gestioneLocked" class="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-lg text-sm">
+        🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.
+      </div>
+      
+      <div id="gestioneUnlocked" class="hidden">
+        <div class="flex items-center gap-3 mb-6">
+          <span class="text-3xl">📋</span>
+          <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Dashboard Gestione Richieste (HR)</h1>
+        </div>
+
+        <div class="flex gap-8 border-b border-slate-200 mb-6 text-xs font-medium">
+          <button id="mainTab1Btn" onclick="switchMainTab('tab1')" class="tab-active pb-3 flex items-center gap-2">📑 Richieste Moduli Cartacei/PDF</button>
+          <button id="mainTab2Btn" onclick="switchMainTab('tab2')" class="text-slate-500 hover:text-slate-800 pb-3 flex items-center gap-2">💳 Ticket Digitali (Tessere)</button>
+        </div>
+
+        <!-- MAIN TAB 1: RICHIESTE CARTACEI -->
+        <div id="mainTab1" class="block space-y-4">
+          <div class="flex items-center gap-4 text-xs">
+            <span class="font-semibold">Filtra per Stato:</span>
+            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="filtroStato" value="Tutti" checked onchange="renderRichiesteHR()"> Tutti</label>
+            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="filtroStato" value="In lavorazione" onchange="renderRichiesteHR()"> In lavorazione</label>
+            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="filtroStato" value="Pronti" onchange="renderRichiesteHR()"> Pronti</label>
+          </div>
+
+          <div id="richiesteList" class="space-y-4"></div>
+        </div>
+
+        <!-- MAIN TAB 2: TICKET DIGITALI -->
+        <div id="mainTab2" class="hidden space-y-6">
+          <h3 class="text-lg font-bold text-slate-800">💳 Tracciamento Tessere Digitali & Calcolo Presenze</h3>
+          
+          <div class="flex gap-6 border-b border-slate-200 mb-4 text-xs font-medium">
+            <button id="subTabABtn" onclick="switchSubTab('subA')" class="subtab-active pb-2">📊 Matrice Tessere Digitali</button>
+            <button id="subTabBBtn" onclick="switchSubTab('subB')" class="text-slate-500 hover:text-slate-800 pb-2">📁 Upload & Storico Libro Presenze</button>
+            <button id="subTabCBtn" onclick="switchSubTab('subC')" class="text-slate-500 hover:text-slate-800 pb-2">👥 Anagrafica Nominativi con Diritto</button>
+          </div>
+
+          <!-- SUB TAB A: MATRICE -->
+          <div id="subTabA" class="block space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <label class="text-xs font-semibold">Anno di Riferimento:</label>
+                <select id="matriceAnno" onchange="renderMatrice()" class="input-custom rounded-lg px-3 py-1.5 text-xs font-medium">
+                  <option value="2026">2026</option><option value="2027">2027</option>
+                </select>
+              </div>
+              <button onclick="addNuovaTesseraPrompt()" class="bg-slate-100 hover:bg-slate-200 border text-slate-700 text-xs px-3 py-1.5 rounded-md">➕ Aggiungi Nuova Tessera Digital</button>
+            </div>
+
+            <div class="overflow-x-auto border rounded-lg">
+              <table class="w-full text-xs text-left border-collapse">
+                <thead class="bg-slate-50 border-b text-slate-600">
+                  <tr>
+                    <th class="p-2 border-r">N° Tessera</th>
+                    <th class="p-2 border-r">Assegnato Momentaneamente a</th>
+                    <th class="p-2 border-r text-center">Gen</th><th class="p-2 border-r text-center">Feb</th><th class="p-2 border-r text-center">Mar</th>
+                    <th class="p-2 border-r text-center">Apr</th><th class="p-2 border-r text-center">Mag</th><th class="p-2 border-r text-center">Giu</th>
+                    <th class="p-2 border-r text-center">Lug</th><th class="p-2 border-r text-center">Ago</th><th class="p-2 border-r text-center">Set</th>
+                    <th class="p-2 border-r text-center">Ott</th><th class="p-2 border-r text-center">Nov</th><th class="p-2 border-r text-center">Dic</th>
+                  </tr>
+                </thead>
+                <tbody id="matriceTbody"></tbody>
+              </table>
+            </div>
+
+            <div class="flex justify-between items-center pt-2">
+              <button onclick="salvaMatriceTessere()" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-xs px-4 py-2 rounded-md shadow-sm">💾 Salva Modifiche Tabella Tessere</button>
+              <div class="flex gap-6 text-xs font-semibold">
+                <div>Totale Ticket Caricati: <span id="totTicketMatrice" class="text-red-500 font-bold">0</span></div>
+                <div>Valore Economico Totale: <span id="totValoreMatrice" class="text-green-600 font-bold">€ 0,00</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB TAB B: LIBRO PRESENZE -->
+          <div id="subTabB" class="hidden space-y-6">
+            <div class="card-border p-6 space-y-4">
+              <h4 class="font-bold text-sm">📄 Upload Nuovo Libro Presenze Mensile</h4>
+              <p class="text-xs text-slate-500">Vengono letti i conteggi dalla <b>colonna AQ</b> per le causali <b>PREORD</b> e <b>SMARTW</b> sui dipendenti abilitati in Anagrafica.</p>
+              
+              <div class="grid grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Mese Presenze:</label>
+                  <select id="presMese" class="w-full input-custom rounded-lg p-2 text-xs">
+                    <option value="ottobre">Ottobre</option><option value="novembre">Novembre</option><option value="dicembre">Dicembre</option>
+                    <option value="gennaio">Gennaio</option><option value="febbraio">Febbraio</option><option value="marzo">Marzo</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Anno Presenze:</label>
+                  <select id="presAnno" class="w-full input-custom rounded-lg p-2 text-xs"><option value="2026">2026</option><option value="2027">2027</option></select>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Seleziona File (Excel/CSV):</label>
+                  <input type="file" id="presFile" accept=".xlsx,.xls,.csv" class="w-full text-xs">
+                </div>
+              </div>
+
+              <button onclick="elaboraLibroPresenze()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-md">🧮 Calcola Spettanze dal File</button>
+            </div>
+
+            <!-- RISULTATI CALCOLO -->
+            <div id="risultatiPresenzeBox" class="hidden card-border p-6 space-y-4">
+              <h4 id="risultatiTitle" class="font-bold text-sm text-indigo-900">🧮 Risultati Calcolo Spettanze Ticket</h4>
+              <div class="overflow-x-auto border rounded-lg">
+                <table class="w-full text-xs text-left">
+                  <thead class="bg-slate-50 border-b">
+                    <tr><th class="p-2">Cognome e Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket PREORD + SMARTW (Col. AQ)</th><th class="p-2">Valore (€)</th></tr>
+                  </thead>
+                  <tbody id="presenzeResultTbody"></tbody>
+                </table>
+              </div>
+              <button onclick="popolaMatriceDaPresenze()" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-xs px-4 py-2 rounded-md">⚡ Applica e Popola Matrice Tessere Digitali</button>
+            </div>
+
+            <!-- STORICO -->
+            <div class="card-border p-6 space-y-3">
+              <h4 class="font-bold text-sm">📚 Archivio e Storico Libri Presenze</h4>
+              <div id="storicoPresenzeList" class="text-xs space-y-2"></div>
+            </div>
+          </div>
+
+          <!-- SUB TAB C: ANAGRAFICA -->
+          <div id="subTabC" class="hidden space-y-6">
+            <div class="card-border p-6 space-y-4">
+              <h4 class="font-bold text-sm">👥 Aggiungi / Aggiorna Dipendente Avente Diritto</h4>
+              <div class="grid grid-cols-3 gap-4 items-center">
+                <input type="text" id="anagNome" placeholder="Cognome e Nome *" class="input-custom rounded-lg p-2 text-xs">
+                <label class="flex items-center gap-2 text-xs font-medium"><input type="checkbox" id="anagDiritto" checked class="accent-red-500"> Ha Diritto ai Ticket</label>
+                <button onclick="salvaDipendenteAnagrafica()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold py-2 rounded-md">Aggiungi / Aggiorna Dipendente</button>
+              </div>
+            </div>
+
+            <div class="card-border p-6 space-y-3">
+              <h4 class="font-bold text-sm">Lista Dipendenti Registrati</h4>
+              <div class="overflow-x-auto border rounded-lg">
+                <table class="w-full text-xs text-left">
+                  <thead class="bg-slate-50 border-b"><tr><th class="p-2">Cognome e Nome</th><th class="p-2">Avente Diritto</th><th class="p-2">Azione</th></tr></thead>
+                  <tbody id="anagraficaTbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROTETTO: HR MAGAZZINO & ORDINI -->
+    <section id="section-magazzino" class="hidden">
+      <div id="magazzinoLocked" class="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-lg text-sm">
+        🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.
+      </div>
+
+      <div id="magazzinoUnlocked" class="hidden space-y-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="text-3xl">📦</span>
+          <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Magazzino Ticket & Tracciamento Ordini</h1>
+        </div>
+
+        <div class="card-border overflow-hidden">
+          <div class="bg-slate-50/80 px-6 py-3 border-b flex items-center gap-2 text-xs font-medium text-slate-600">
+            <span class="text-indigo-600">➕</span> Registra Nuova Fattura / Ordine Ticket
+          </div>
+          <div class="p-8 bg-white">
+            <form onsubmit="handleOrderSubmit(event)" class="space-y-6">
+              <div class="grid grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-xs font-semibold mb-2">Numero Fattura / Ordine *</label>
+                  <input type="text" id="ordFattura" required class="w-full input-custom rounded-lg px-4 py-2.5 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-2">Ticket Erogati Iniziali</label>
+                  <div class="flex items-center input-custom rounded-lg px-4 py-1.5">
+                    <input type="number" id="erogatiIniziali" value="0" min="0" class="w-full bg-transparent text-sm border-none focus:outline-none">
+                    <div class="flex items-center gap-3 text-slate-500 font-semibold ml-2">
+                      <button type="button" onclick="changeCount('erogatiIniziali', -1)" class="stepper-btn font-bold px-1">−</button>
+                      <button type="button" onclick="changeCount('erogatiIniziali', 1)" class="stepper-btn font-bold px-1">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-2">Valore Singolo Ticket (€) *</label>
+                  <div class="flex items-center input-custom rounded-lg px-4 py-1.5">
+                    <input type="text" id="valoreTicket" value="5,20" class="w-full bg-transparent text-sm border-none focus:outline-none">
+                    <div class="flex items-center gap-3 text-slate-500 font-semibold ml-2">
+                      <button type="button" onclick="changeValue('valoreTicket', -0.1)" class="stepper-btn font-bold px-1">−</button>
+                      <button type="button" onclick="changeValue('valoreTicket', 0.1)" class="stepper-btn font-bold px-1">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-2">Residuo Ordine Precedente</label>
+                  <div class="flex items-center input-custom rounded-lg px-4 py-1.5">
+                    <input type="number" id="residuoPrecedente" value="0" min="0" class="w-full bg-transparent text-sm border-none focus:outline-none">
+                    <div class="flex items-center gap-3 text-slate-500 font-semibold ml-2">
+                      <button type="button" onclick="changeCount('residuoPrecedente', -1)" class="stepper-btn font-bold px-1">−</button>
+                      <button type="button" onclick="changeCount('residuoPrecedente', 1)" class="stepper-btn font-bold px-1">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-2">Quantità Ticket Acquistati *</label>
+                  <div class="flex items-center input-custom rounded-lg px-4 py-1.5">
+                    <input type="number" id="quantitaAcquistati" value="2000" min="1" required class="w-full bg-transparent text-sm border-none focus:outline-none">
+                    <div class="flex items-center gap-3 text-slate-500 font-semibold ml-2">
+                      <button type="button" onclick="changeCount('quantitaAcquistati', -100)" class="stepper-btn font-bold px-1">−</button>
+                      <button type="button" onclick="changeCount('quantitaAcquistati', 100)" class="stepper-btn font-bold px-1">+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div><button type="submit" class="bg-white border hover:bg-slate-50 text-slate-700 text-xs font-semibold px-5 py-2.5 rounded-md shadow-sm">Salva Ordine</button></div>
+            </form>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <h3 class="text-base font-bold">📋 Riepilogo Ordini & Giacenza Ticket</h3>
+          <div class="overflow-x-auto border rounded-lg">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-50 border-b">
+                <tr><th class="p-2.5">Fattura/Ordine</th><th class="p-2.5">Valore Unitario</th><th class="p-2.5">Acquistati</th><th class="p-2.5">Erogati</th><th class="p-2.5">Residuo Precedente</th><th class="p-2.5">Ticket Residui TOT</th><th class="p-2.5">Azione</th></tr>
+              </thead>
+              <tbody id="ordiniTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="space-y-4 pt-4 border-t">
+          <h3 class="text-base font-bold">📤 Sezione Ticket Erogati (Assegnati a Richieste PRONTI)</h3>
+          <div class="overflow-x-auto border rounded-lg">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-50 border-b"><tr><th class="p-2.5">Dipendente</th><th class="p-2.5">Email</th><th class="p-2.5">Periodo</th><th class="p-2.5">N° Ticket Erogati</th><th class="p-2.5">Fattura / Ordine di Riferimento</th></tr></thead>
+              <tbody id="erogatiTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const PASSWORD_HR = "pallinerosa26!";
+    let isHrAuthenticated = false;
+
+    // LOCAL STORAGE DATABASE INIZIALIZZAZIONE
+    function initDB() {
+      if(!localStorage.getItem("db_richieste")) localStorage.setItem("db_richieste", JSON.stringify([]));
+      if(!localStorage.getItem("db_ordini")) localStorage.setItem("db_ordini", JSON.stringify([]));
+      if(!localStorage.getItem("db_matrice")) {
+        let defaultMatrice = [];
+        for(let i=1; i<=30; i++) {
+          let num = "008000" + (i < 10 ? "0" + i : i);
+          let row = { numero_tessera: num, assegnato_a: "", anno: 2026 };
+          ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"].forEach(m => row[m] = 0);
+          defaultMatrice.push(row);
+        }
+        localStorage.setItem("db_matrice", JSON.stringify(defaultMatrice));
+      }
+      if(!localStorage.getItem("db_anagrafica")) {
+        localStorage.setItem("db_anagrafica", JSON.stringify([
+          { nome_cognome: "Mario Rossi", ha_diritto: true },
+          { nome_cognome: "Giuseppe Verdi", ha_diritto: true }
+        ]));
+      }
+      if(!localStorage.getItem("db_storico_presenze")) localStorage.setItem("db_storico_presenze", JSON.stringify([]));
+    }
+    initDB();
+
+    function getDB(key) { return JSON.parse(localStorage.getItem(key) || "[]"); }
+    function setDB(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+    // SWITCH SEZIONI
+    function switchSection(sectionId) {
+      document.getElementById('hrAuthBox').classList.toggle('hidden', sectionId === 'richiesta');
+      ['richiesta', 'gestione', 'magazzino'].forEach(s => {
+        document.getElementById('section-' + s).classList.toggle('hidden', s !== sectionId);
+      });
+      if(sectionId === 'gestione') renderHRGestione();
+      if(sectionId === 'magazzino') renderHRMagazzino();
+    }
+
+    function checkPassword() {
+      const pwd = document.getElementById('hrPasswordInput').value;
+      if (pwd === PASSWORD_HR) {
+        isHrAuthenticated = true;
+        document.getElementById('pwdError').classList.add('hidden');
+        renderHRGestione();
+        renderHRMagazzino();
+      } else {
+        isHrAuthenticated = false;
+        if(pwd.length > 0) document.getElementById('pwdError').classList.remove('hidden');
+        renderHRGestione();
+        renderHRMagazzino();
+      }
+    }
+
+    function togglePasswordVisibility(id) {
+      const el = document.getElementById(id);
+      el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    function changeCount(id, delta) {
+      const el = document.getElementById(id);
+      el.value = Math.max(0, (parseInt(el.value) || 0) + delta);
+    }
+
+    function changeValue(id, delta) {
+      const el = document.getElementById(id);
+      let v = Math.max(0, (parseFloat(el.value.replace(',', '.')) || 0) + delta);
+      el.value = v.toFixed(2).replace('.', ',');
+    }
+
+    function handleFileSelect(input) {
+      const display = document.getElementById('fileNameDisplay');
+      if (input.files && input.files[0]) {
+        display.textContent = input.files[0].name;
+        display.className = "text-xs text-slate-700 font-medium";
+      }
+    }
+
+    // FORM INVIO RICHIESTA
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('reqFile');
+      const reader = new FileReader();
+
+      reader.onload = function(evt) {
+        let reqs = getDB("db_richieste");
+        reqs.push({
+          id: Date.now(),
+          email: document.getElementById('reqEmail').value,
+          nome_cognome: document.getElementById('reqNome').value,
+          mese: document.getElementById('reqMese').value,
+          anno: document.getElementById('reqAnno').value,
+          num_ticket: parseInt(document.getElementById('ticketCount').value),
+          file_url: evt.target.result,
+          file_name: fileInput.files[0].name,
+          stato: "In lavorazione",
+          ordine_fattura: null
+        });
+        setDB("db_richieste", reqs);
+        alert('✅ Richiesta inviata con successo!');
+        e.target.reset();
+        document.getElementById('fileNameDisplay').textContent = '200MB per file • PDF, PNG, JPG';
+        document.getElementById('fileNameDisplay').className = 'text-xs text-slate-400';
+      };
+
+      if(fileInput.files[0]) reader.readAsDataURL(fileInput.files[0]);
+    }
+
+    // RENDER DASHBOARD GESTIONE HR
+    function renderHRGestione() {
+      document.getElementById('gestioneLocked').classList.toggle('hidden', isHrAuthenticated);
+      document.getElementById('gestioneUnlocked').classList.toggle('hidden', !isHrAuthenticated);
+      if(isHrAuthenticated) {
+        renderRichiesteHR();
+        renderMatrice();
+        renderAnagrafica();
+        renderStoricoPresenze();
+      }
+    }
+
+    function switchMainTab(tab) {
+      document.getElementById('mainTab1Btn').className = tab === 'tab1' ? 'tab-active pb-3 flex items-center gap-2' : 'text-slate-500 pb-3 flex items-center gap-2';
+      document.getElementById('mainTab2Btn').className = tab === 'tab2' ? 'tab-active pb-3 flex items-center gap-2' : 'text-slate-500 pb-3 flex items-center gap-2';
+      document.getElementById('mainTab1').classList.toggle('hidden', tab !== 'tab1');
+      document.getElementById('mainTab2').classList.toggle('hidden', tab !== 'tab2');
+    }
+
+    function switchSubTab(sub) {
+      document.getElementById('subTabABtn').className = sub === 'subA' ? 'subtab-active pb-2' : 'text-slate-500 pb-2';
+      document.getElementById('subTabBBtn').className = sub === 'subB' ? 'subtab-active pb-2' : 'text-slate-500 pb-2';
+      document.getElementById('subTabCBtn').className = sub === 'subC' ? 'subtab-active pb-2' : 'text-slate-500 pb-2';
+      document.getElementById('subTabA').classList.toggle('hidden', sub !== 'subA');
+      document.getElementById('subTabB').classList.toggle('hidden', sub !== 'subB');
+      document.getElementById('subTabC').classList.toggle('hidden', sub !== 'subC');
+    }
+
+    function renderRichiesteHR() {
+      const container = document.getElementById('richiesteList');
+      const reqs = getDB("db_richieste");
+      const ordini = getDB("db_ordini");
+      const filtro = document.querySelector('input[name="filtroStato"]:checked').value;
+
+      container.innerHTML = "";
+      const list = reqs.filter(r => filtro === 'Tutti' || r.stato === filtro);
+
+      if(list.length === 0) {
+        container.innerHTML = `<div class="bg-blue-50 text-blue-600 text-xs p-4 rounded-xl">Nessuna richiesta trovata.</div>`;
+        return;
+      }
+
+      list.forEach(r => {
+        const isPronto = r.stato === 'Pronti';
+        const color = isPronto ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200';
+        const badge = isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE';
+
+        let ordOptions = ordini.map(o => `<option value="${o.fattura}" ${r.ordine_fattura === o.fattura ? 'selected':''}>${o.fattura}</option>`).join('');
+
+        container.innerHTML += `
+          <div class="${color} border p-4 rounded-lg space-y-3">
+            <div class="flex justify-between items-center">
+              <h4 class="font-bold text-sm text-slate-800">${r.nome_cognome} — <span class="text-xs font-semibold">${badge}</span></h4>
+              <button onclick="eliminaRichiesta(${r.id})" class="text-xs text-red-600 hover:underline">🗑️ Elimina</button>
+            </div>
+            <p class="text-xs text-slate-600"><b>Email:</b> ${r.email} | <b>Periodo:</b> ${r.mese} ${r.anno} | <b>N° Ticket:</b> ${r.num_ticket}</p>
+            <div class="flex items-center gap-4 pt-1">
+              <a href="${r.file_url}" download="${r.file_name}" class="bg-white border px-3 py-1.5 rounded text-xs font-medium text-slate-700 hover:bg-slate-50">📄 Scarica/Apri Modulo Firmato</a>
+              ${!isPronto ? `
+                <div class="flex items-center gap-2">
+                  <select id="selOrd_\${r.id}" class="input-custom text-xs rounded px-2 py-1">\${ordOptions || '<option>Nessun Ordine</option>'}</select>
+                  <button onclick="segnaPronto(\${r.id})" class="bg-emerald-600 text-white text-xs font-semibold px-3 py-1 rounded hover:bg-emerald-700">Segna come PRONTI 🚀</button>
+                </div>
+              ` : `<span class="text-xs text-emerald-700 font-semibold">Associato a Ordine: \${r.ordine_fattura}</span>`}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function segnaPronto(id) {
+      let reqs = getDB("db_richieste");
+      const sel = document.getElementById(`selOrd_${id}`);
+      if(!sel || !sel.value || sel.value === 'Nessun Ordine') { alert('Seleziona un ordine valido.'); return; }
+
+      let req = reqs.find(r => r.id === id);
+      if(req) {
+        req.stato = 'Pronti';
+        req.ordine_fattura = sel.value;
+        setDB("db_richieste", reqs);
+        renderRichiesteHR();
+        renderHRMagazzino();
+      }
+    }
+
+    function eliminaRichiesta(id) {
+      if(confirm('Confermi eliminazione?')) {
+        let reqs = getDB("db_richieste").filter(r => r.id !== id);
+        setDB("db_richieste", reqs);
+        renderRichiesteHR();
+        renderHRMagazzino();
+      }
+    }
+
+    // MATRICE TESSERE
+    function renderMatrice() {
+      const tbody = document.getElementById('matriceTbody');
+      const anno = parseInt(document.getElementById('matriceAnno').value);
+      const matrice = getDB("db_matrice").filter(m => m.anno === anno);
+
+      tbody.innerHTML = "";
+      let totTicket = 0;
+
+      matrice.forEach((r, idx) => {
+        let mCells = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"].map(m => {
+          let val = r[m] || 0;
+          totTicket += parseInt(val);
+          return `<td class="border-r p-1 text-center"><input type="number" min="0" value="${val}" data-tess="${r.numero_tessera}" data-mese="${m}" class="w-12 text-center border-none focus:ring-1 focus:ring-red-400 text-xs"></td>`;
+        }).join('');
+
+        tbody.innerHTML += `
+          <tr class="border-b">
+            <td class="p-2 border-r font-medium">${r.numero_tessera}</td>
+            <td class="p-2 border-r"><input type="text" value="${r.assegnato_a || ''}" data-tess="${r.numero_tessera}" data-field="assegnato_a" class="w-full text-xs input-custom rounded px-2 py-1"></td>
+            ${mCells}
+          </tr>
+        `;
+      });
+
+      document.getElementById('totTicketMatrice').textContent = totTicket + " ticket";
+      document.getElementById('totValoreMatrice').textContent = "€ " + (totTicket * 5.20).toFixed(2).replace('.', ',');
+    }
+
+    function salvaMatriceTessere() {
+      const anno = parseInt(document.getElementById('matriceAnno').value);
+      let matrice = getDB("db_matrice");
+
+      document.querySelectorAll('#matriceTbody input').forEach(input => {
+        const tess = input.getAttribute('data-tess');
+        const mese = input.getAttribute('data-mese');
+        const field = input.getAttribute('data-field');
+
+        let row = matrice.find(m => m.numero_tessera === tess && m.anno === anno);
+        if(row) {
+          if(mese) row[mese] = parseInt(input.value) || 0;
+          if(field) row[field] = input.value;
+        }
+      });
+
+      setDB("db_matrice", matrice);
+      alert('✅ Tabella tessere salvata!');
+      renderMatrice();
+    }
+
+    function addNuovaTesseraPrompt() {
+      const num = prompt("Inserisci Numero Nuova Tessera:");
+      if(num) {
+        const anno = parseInt(document.getElementById('matriceAnno').value);
+        let matrice = getDB("db_matrice");
+        let newRow = { numero_tessera: num, assegnato_a: "", anno: anno };
+        ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"].forEach(m => newRow[m] = 0);
+        matrice.push(newRow);
+        setDB("db_matrice", matrice);
+        renderMatrice();
+      }
+    }
+
+    // LIBRO PRESENZE PARSER
+    let tempCalculatedPresenze = [];
+
+    function elaboraLibroPresenze() {
+      const fileInput = document.getElementById('presFile');
+      if(!fileInput.files[0]) { alert('Seleziona un file!'); return; }
+
+      const mese = document.getElementById('presMese').value;
+      const anno = document.getElementById('presAnno').value;
+      const anagrafica = getDB("db_anagrafica").filter(a => a.ha_diritto);
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, {header: 1});
+
+        tempCalculatedPresenze = [];
+        const tbody = document.getElementById('presenzeResultTbody');
+        tbody.innerHTML = "";
+
+        anagrafica.forEach(dip => {
+          let count = 0;
+          let trovato = false;
+
+          json.forEach(row => {
+            let rowStr = row.join(" ").toLowerCase();
+            if(rowStr.includes(dip.nome_cognome.toLowerCase())) {
+              trovato = true;
+            }
+            if(trovato && (rowStr.includes("preord") || rowStr.includes("smartw"))) {
+              let valAQ = row[42]; // Colonna AQ
+              if(valAQ !== undefined && valAQ !== null) {
+                let n = parseInt(valAQ);
+                if(!isNaN(n)) count += n;
+              }
+            }
+          });
+
+          tempCalculatedPresenze.push({ nome: dip.nome_cognome, count: count, mese: mese, anno: anno });
+
+          tbody.innerHTML += `
+            <tr class="border-b">
+              <td class="p-2 font-medium">${dip.nome_cognome}</td>
+              <td class="p-2">${trovato ? '✅ SI' : '❌ NO'}</td>
+              <td class="p-2 font-bold">${count}</td>
+              <td class="p-2 text-green-700">€ ${(count * 5.20).toFixed(2)}</td>
+            </tr>
+          `;
+        });
+
+        // Salva in storico
+        let storico = getDB("db_storico_presenze");
+        storico.push({ id: Date.now(), mese: mese, anno: anno, file_name: fileInput.files[0].name });
+        setDB("db_storico_presenze", storico);
+        renderStoricoPresenze();
+
+        document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
+      };
+
+      reader.readAsArrayBuffer(fileInput.files[0]);
+    }
+
+    function popolaMatriceDaPresenze() {
+      if(tempCalculatedPresenze.length === 0) return;
+      let matrice = getDB("db_matrice");
+
+      tempCalculatedPresenze.forEach(item => {
+        let row = matrice.find(m => m.assegnato_a.toLowerCase().includes(item.nome.toLowerCase()) && m.anno === parseInt(item.anno));
+        if(row) {
+          row[item.mese.toLowerCase()] = item.count;
+        }
+      });
+
+      setDB("db_matrice", matrice);
+      alert('✅ Matrice tessere popolata!');
+      renderMatrice();
+    }
+
+    function renderStoricoPresenze() {
+      const container = document.getElementById('storicoPresenzeList');
+      const storico = getDB("db_storico_presenze");
+      container.innerHTML = storico.map(s => `
+        <div class="flex justify-between items-center bg-slate-50 p-2 rounded border">
+          <span>📁 <b>${s.mese.toUpperCase()} ${s.anno}</b> — ${s.file_name}</span>
+          <span class="text-xs text-slate-400">Archiviato</span>
+        </div>
+      `).join('') || '<p class="text-slate-400">Nessun file archiviato.</p>';
+    }
+
+    // ANAGRAFICA
+    function renderAnagrafica() {
+      const tbody = document.getElementById('anagraficaTbody');
+      const list = getDB("db_anagrafica");
+      tbody.innerHTML = list.map((a, idx) => `
+        <tr class="border-b">
+          <td class="p-2 font-medium">${a.nome_cognome}</td>
+          <td class="p-2">${a.ha_diritto ? '✅ Si' : '❌ No'}</td>
+          <td class="p-2"><button onclick="rimuoviDipendente(${idx})" class="text-red-500 hover:underline">Rimuovi</button></td>
+        </tr>
+      `).join('');
+    }
+
+    function salvaDipendenteAnagrafica() {
+      const nome = document.getElementById('anagNome').value;
+      const diritto = document.getElementById('anagDiritto').checked;
+      if(!nome) return;
+
+      let anag = getDB("db_anagrafica");
+      anag.push({ nome_cognome: nome, ha_diritto: diritto });
+      setDB("db_anagrafica", anag);
+      document.getElementById('anagNome').value = "";
+      renderAnagrafica();
+    }
+
+    function rimuoviDipendente(idx) {
+      let anag = getDB("db_anagrafica");
+      anag.splice(idx, 1);
+      setDB("db_anagrafica", anag);
+      renderAnagrafica();
+    }
+
+    // MAGAZZINO & ORDINI
+    function renderHRMagazzino() {
+      document.getElementById('magazzinoLocked').classList.toggle('hidden', isHrAuthenticated);
+      document.getElementById('magazzinoUnlocked').classList.toggle('hidden', !isHrAuthenticated);
+      if(isHrAuthenticated) {
+        renderOrdiniTabelle();
+      }
+    }
+
+    function handleOrderSubmit(e) {
+      e.preventDefault();
+      let ordini = getDB("db_ordini");
+      ordini.push({
+        id: Date.now(),
+        fattura: document.getElementById('ordFattura').value,
+        valore: document.getElementById('valoreTicket').value,
+        acquistati: parseInt(document.getElementById('quantitaAcquistati').value),
+        erogati_iniziali: parseInt(document.getElementById('erogatiIniziali').value),
+        residuo_precedente: parseInt(document.getElementById('residuoPrecedente').value)
+      });
+      setDB("db_ordini", ordini);
+      alert('✅ Ordine salvato!');
+      e.target.reset();
+      renderOrdiniTabelle();
+    }
+
+    function renderOrdiniTabelle() {
+      const ordiniTbody = document.getElementById('ordiniTbody');
+      const erogatiTbody = document.getElementById('erogatiTbody');
+
+      const ordini = getDB("db_ordini");
+      const richieste = getDB("db_richieste").filter(r => r.stato === 'Pronti');
+
+      ordiniTbody.innerHTML = "";
+      erogatiTbody.innerHTML = "";
+
+      ordini.forEach(o => {
+        let erogatiRichieste = richieste.filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + r.num_ticket, 0);
+        let erogatiTotali = o.erogati_iniziali + erogatiRichieste;
+        let residuoTotale = Math.max(0, (o.acquistati + o.residuo_precedente) - erogatiTotali);
+
+        ordiniTbody.innerHTML += `
+          <tr class="border-b">
+            <td class="p-2.5 font-bold">${o.fattura}</td>
+            <td class="p-2.5">€ ${o.valore}</td>
+            <td class="p-2.5">${o.acquistati}</td>
+            <td class="p-2.5 text-amber-600 font-semibold">${erogatiTotali}</td>
+            <td class="p-2.5">${o.residuo_precedente}</td>
+            <td class="p-2.5 text-emerald-600 font-bold">${residuoTotale}</td>
+            <td class="p-2.5"><button onclick="eliminaOrdine(${o.id})" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
+          </tr>
+        `;
+      });
+
+      richieste.forEach(r => {
+        erogatiTbody.innerHTML += `
+          <tr class="border-b">
+            <td class="p-2.5 font-medium">${r.nome_cognome}</td>
+            <td class="p-2.5">${r.email}</td>
+            <td class="p-2.5">${r.mese} ${r.anno}</td>
+            <td class="p-2.5 font-bold">${r.num_ticket}</td>
+            <td class="p-2.5 text-indigo-600 font-semibold">${r.ordine_fattura}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function eliminaOrdine(id) {
+      if(confirm('Confermi eliminazione ordine?')) {
+        let ordini = getDB("db_ordini").filter(o => o.id !== id);
+        setDB("db_ordini", ordini);
+        renderOrdiniTabelle();
+      }
+    }
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestione Ticket HR</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', -apple-system, sans-serif; background-color: #ffffff; color: #334155; }
+    .sidebar-bg { background-color: #f1f4f9; }
+    .input-custom { background-color: #f1f4f9; border: 1px solid transparent; transition: all 0.2s; }
+    .input-custom:focus { background-color: #ffffff; border-color: #cbd5e1; outline: none; box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2); }
+    .card-border { border: 1px solid #e2e8f0; border-radius: 8px; }
+    .tab-active { border-bottom: 2px solid #ef4444; color: #ef4444; font-weight: 600; }
+    .subtab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
+    .stepper-btn { user-select: none; }
+  </style>
+</head>
+<body class="bg-white min-h-screen flex text-slate-700">
+
+  <!-- SIDEBAR DI NAVIGAZIONE -->
+  <aside class="w-80 sidebar-bg border-r border-slate-200 p-6 flex flex-col justify-between shrink-0 min-h-screen">
+    <div>
+      <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📌</span>
+          <h2 class="text-xl font-bold text-slate-800">Menu Navigazione</h2>
+        </div>
+        <button class="text-slate-400 hover:text-slate-600 font-bold text-lg">«</button>
+      </div>
+
+      <p class="text-sm font-medium text-slate-600 mb-4">Seleziona Sezione:</p>
+      
+      <nav class="space-y-3">
+        <label class="flex items-center gap-3 cursor-pointer group">
+          <input type="radio" name="section" value="richiesta" checked onchange="switchSection('richiesta')" class="w-4 h-4 text-red-500 accent-red-500 cursor-pointer">
+          <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">Nuova Richiesta</span>
+        </label>
+        <label class="flex items-center gap-3 cursor-pointer group">
+          <input type="radio" name="section" value="gestione" onchange="switchSection('gestione')" class="w-4 h-4 text-red-500 accent-red-500 cursor-pointer">
+          <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">HR - Gestione Richieste</span>
+        </label>
+        <label class="flex items-center gap-3 cursor-pointer group">
+          <input type="radio" name="section" value="magazzino" onchange="switchSection('magazzino')" class="w-4 h-4 text-red-500 accent-red-500 cursor-pointer">
+          <span class="text-sm font-medium text-slate-700 group-hover:text-slate-900">HR - Magazzino & Ordini</span>
+        </label>
+      </nav>
+    </div>
+
+    <!-- Area Riservata HR -->
+    <div id="hrAuthBox" class="pt-6 border-t border-slate-300/60 hidden">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-base">🔒</span>
+        <h3 class="text-base font-bold text-slate-800">Area Riservata HR</h3>
+      </div>
+      <p class="text-xs text-slate-600 mb-2 font-medium">Inserisci Password HR:</p>
+      <div class="relative">
+        <input type="password" id="hrPasswordInput" oninput="checkPassword()" placeholder="••••••••••••" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm pr-9 focus:outline-none focus:border-slate-400">
+        <button type="button" onclick="togglePasswordVisibility('hrPasswordInput')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+          👁️
+        </button>
+      </div>
+      <p id="pwdError" class="text-xs text-red-500 mt-1 hidden">❌ Password errata</p>
+    </div>
+  </aside>
+
+  <!-- CONTENUTO PRINCIPALE -->
+  <main class="flex-1 p-10 max-w-7xl overflow-x-auto">
+    <div class="flex justify-end mb-4">
+      <button class="text-slate-500 hover:text-slate-700 text-xl font-bold">⋮</button>
+    </div>
+
+    <!-- SEZIONE 1: NUOVA RICHIESTA -->
+    <section id="section-richiesta" class="block">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-3xl">🎟️</span>
+        <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Richiesta</h1>
+      </div>
+      <p class="text-sm text-slate-600 mb-8">Compila i campi sottostanti e carica la foto o il PDF del modulo firmato.</p>
+
+      <div class="card-border p-8 bg-white max-w-5xl">
+        <form onsubmit="handleFormSubmit(event)" class="space-y-6">
+          <div class="grid grid-cols-2 gap-6">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-2">Email aziendale *</label>
+              <input type="email" id="reqEmail" required class="w-full input-custom rounded-lg px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-2">Mese *</label>
+              <select id="reqMese" required class="w-full input-custom rounded-lg px-4 py-2.5 text-sm">
+                <option value="Gennaio">Gennaio</option><option value="Febbraio">Febbraio</option><option value="Marzo">Marzo</option>
+                <option value="Aprile">Aprile</option><option value="Maggio">Maggio</option><option value="Giugno">Giugno</option>
+                <option value="Luglio">Luglio</option><option value="Agosto">Agosto</option><option value="Settembre">Settembre</option>
+                <option value="Ottobre">Ottobre</option><option value="Novembre">Novembre</option><option value="Dicembre">Dicembre</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-2">Cognome e Nome *</label>
+              <input type="text" id="reqNome" required class="w-full input-custom rounded-lg px-4 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-2">N° totale Ticket richiesti *</label>
+              <div class="flex items-center input-custom rounded-lg px-4 py-1.5">
+                <input type="number" id="ticketCount" value="1" min="1" required class="w-full bg-transparent text-sm border-none focus:outline-none">
+                <div class="flex items-center gap-3 text-slate-500 font-semibold ml-2">
+                  <button type="button" onclick="changeCount('ticketCount', -1)" class="stepper-btn hover:text-slate-800 text-base font-bold px-1">−</button>
+                  <button type="button" onclick="changeCount('ticketCount', 1)" class="stepper-btn hover:text-slate-800 text-base font-bold px-1">+</button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-2">Anno *</label>
+              <select id="reqAnno" required class="w-full input-custom rounded-lg px-4 py-2.5 text-sm">
+                <option value="2026">2026</option><option value="2027">2027</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-2">Carica foto o PDF del modulo firmato *</label>
+            <div class="input-custom rounded-lg p-3 flex items-center gap-4">
+              <label class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium px-4 py-2 rounded-md shadow-sm cursor-pointer flex items-center gap-2">
+                <span>⬆</span> Upload
+                <input type="file" id="reqFile" required accept=".pdf,.png,.jpg,.jpeg" class="hidden" onchange="handleFileSelect(this)">
+              </label>
+              <span id="fileNameDisplay" class="text-xs text-slate-400">200MB per file • PDF, PNG, JPG</span>
+            </div>
+          </div>
+
+          <div>
+            <button type="submit" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-5 py-2.5 rounded-md shadow-sm transition">
+              Invia Richiesta
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- PROTETTO: HR GESTIONE RICHIESTE -->
+    <section id="section-gestione" class="hidden">
+      <div id="gestioneLocked" class="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-lg text-sm">
+        🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.
+      </div>
+      
+      <div id="gestioneUnlocked" class="hidden">
+        <div class="flex items-center gap-3 mb-6">
+          <span class="text-3xl">📋</span>
+          <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Dashboard Gestione Richieste (HR)</h1>
+        </div>
+
+        <div class="flex gap-8 border-b border-slate-200 mb-6 text-xs font-medium">
+          <button id="mainTab1Btn" onclick="switchMainTab('tab1')" class="tab-active pb-3 flex items-center gap-2">📑 Richieste Moduli Cartacei/PDF</button>
+          <button id="mainTab2Btn" onclick="switchMainTab('tab2')" class="text-slate-500 hover:text-slate-800 pb-3 flex items-center gap-2">💳 Ticket Digitali (Tessere)</button>
+        </div>
+
+        <!-- MAIN TAB 1: RICHIESTE CARTACEI -->
+        <div id="mainTab1" class="block space-y-4">
+          <div class="flex items-center gap-4 text-xs">
+            <span class="font-semibold">Filtra per Stato:</span>
+            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="filtroStato" value="Tutti" checked onchange="renderRichiesteHR()"> Tutti</label>
+            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="filtroStato" value="In lavorazione" onchange="renderRichiesteHR()"> In lavorazione</label>
+            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="filtroStato" value="Pronti" onchange="renderRichiesteHR()"> Pronti</label>
+          </div>
+
+          <div id="richiesteList" class="space-y-4"></div>
+        </div>
+
+        <!-- MAIN TAB 2: TICKET DIGITALI -->
+        <div id="mainTab2" class="hidden space-y-6">
+          <h3 class="text-lg font-bold text-slate-800">💳 Tracciamento Tessere Digitali & Calcolo Presenze</h3>
+          
+          <div class="flex gap-6 border-b border-slate-200 mb-4 text-xs font-medium">
+            <button id="subTabABtn" onclick="switchSubTab('subA')" class="subtab-active pb-2">📊 Matrice Tessere Digitali</button>
+            <button id="subTabBBtn" onclick="switchSubTab('subB')" class="text-slate-500 hover:text-slate-800 pb-2">📁 Upload & Storico Libro Presenze</button>
+            <button id="subTabCBtn" onclick="switchSubTab('subC')" class="text-slate-500 hover:text-slate-800 pb-2">👥 Anagrafica Nominativi con Diritto</button>
+          </div>
+
+          <!-- SUB TAB A: MATRICE -->
+          <div id="subTabA" class="block space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <label class="text-xs font-semibold">Anno di Riferimento:</label>
+                <select id="matriceAnno" onchange="renderMatrice()" class="input-custom rounded-lg px-3 py-1.5 text-xs font-medium">
+                  <option value="2026">2026</option><option value="2027">2027</option>
+                </select>
+              </div>
+              <button onclick="addNuovaTesseraPrompt()" class="bg-slate-100 hover:bg-slate-200 border text-slate-700 text-xs px-3 py-1.5 rounded-md">➕ Aggiungi Nuova Tessera Digital</button>
+            </div>
+
+            <div class="overflow-x-auto border rounded-lg">
+              <table class="w-full text-xs text-left border-collapse">
+                <thead class="bg-slate-50 border-b text-slate-600">
+                  <tr>
+                    <th class="p-2 border-r">N° Tessera</th>
+                    <th class="p-2 border-r">Assegnato Momentaneamente a</th>
+                    <th class="p-2 border-r text-center">Gen</th><th class="p-2 border-r text-center">Feb</th><th class="p-2 border-r text-center">Mar</th>
+                    <th class="p-2 border-r text-center">Apr</th><th class="p-2 border-r text-center">Mag</th><th class="p-2 border-r text-center">Giu</th>
+                    <th class="p-2 border-r text-center">Lug</th><th class="p-2 border-r text-center">Ago</th><th class="p-2 border-r text-center">Set</th>
+                    <th class="p-2 border-r text-center">Ott</th><th class="p-2 border-r text-center">Nov</th><th class="p-2 border-r text-center">Dic</th>
+                  </tr>
+                </thead>
+                <tbody id="matriceTbody"></tbody>
+              </table>
+            </div>
+
+            <div class="flex justify-between items-center pt-2">
+              <button onclick="salvaMatriceTessere()" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-xs px-4 py-2 rounded-md shadow-sm">💾 Salva Modifiche Tabella Tessere</button>
+              <div class="flex gap-6 text-xs font-semibold">
+                <div>Totale Ticket Caricati: <span id="totTicketMatrice" class="text-red-500 font-bold">0</span></div>
+                <div>Valore Economico Totale: <span id="totValoreMatrice" class="text-green-600 font-bold">€ 0,00</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUB TAB B: LIBRO PRESENZE -->
+          <div id="subTabB" class="hidden space-y-6">
+            <div class="card-border p-6 space-y-4">
+              <h4 class="font-bold text-sm">📄 Upload Nuovo Libro Presenze Mensile</h4>
+              <p class="text-xs text-slate-500">Vengono letti i conteggi dalla <b>colonna AQ</b> per le causali <b>PREORD</b> e <b>SMARTW</b> sui dipendenti abilitati in Anagrafica.</p>
+              
+              <div class="grid grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Mese Presenze:</label>
+                  <select id="presMese" class="w-full input-custom rounded-lg p-2 text-xs">
+                    <option value="ottobre">Ottobre</option><option value="novembre">Novembre</option><option value="dicembre">Dicembre</option>
+                    <option value="gennaio">Gennaio</option><option value="febbraio">Febbraio</option><option value="marzo">Marzo</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Anno Presenze:</label>
+                  <select id="presAnno" class="w-full input-custom rounded-lg p-2 text-xs"><option value="2026">2026</option><option value="2027">2027</option></select>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Seleziona File (Excel/CSV):</label>
+                  <input type="file" id="presFile" accept=".xlsx,.xls,.csv" class="w-full text-xs">
+                </div>
+              </div>
+
+              <button onclick="elaboraLibroPresenze()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-md">🧮 Calcola Spettanze dal File</button>
+            </div>
+
+            <!-- RISULTATI CALCOLO -->
+            <div id="risultatiPresenzeBox" class="hidden card-border p-6 space-y-4">
+              <h4 id="risultatiTitle" class="font-bold text-sm text-indigo-900">🧮 Risultati Calcolo Spettanze Ticket</h4>
+              <div class="overflow-x-auto border rounded-lg">
+                <table class="w-full text-xs text-left">
+                  <thead class="bg-slate-50 border-b">
+                    <tr><th class="p-2">Cognome e Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket PREORD + SMARTW (Col. AQ)</th><th class="p-2">Valore (€)</th></tr>
+                  </thead>
+                  <tbody id="presenzeResultTbody"></tbody>
+                </table>
+              </div>
+              <button onclick="popolaMatriceDaPresenze()" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-xs px-4 py-2 rounded-md">⚡ Applica e Popola Matrice Tessere Digitali</button>
+            </div>
+
+            <!-- STORICO -->
+            <div class="card-border p-6 space-y-3">
+              <h4 class="font-bold text-sm">📚 Archivio e Storico Libri Presenze</h4>
+              <div id="storicoPresenzeList" class="text-xs space-y-2"></div>
+            </div>
+          </div>
+
+          <!-- SUB TAB C: ANAGRAFICA -->
+          <div id="subTabC" class="hidden space-y-6">
+            <div class="card-border p-6 space-y-4">
+              <h4 class="font-bold text-sm">👥 Aggiungi / Aggiorna Dipendente Avente Diritto</h4>
+              <div class="grid grid-cols-3 gap-4 items-center">
+                <input type="text" id="anagNome" placeholder="Cognome e Nome *" class="input-custom rounded-lg p-2 text-xs">
+                <label class="flex items-center gap-2 text-xs font-medium"><input type="checkbox" id="anagDiritto" checked class="accent-red-500"> Ha Diritto ai Ticket</label>
+                <button onclick="salvaDipendenteAnagrafica()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold py-2 rounded-md">Aggiungi / Aggiorna Dipendente</button>
+              </div>
+            </div>
+
+            <div class="card-border p-6 space-y-3">
+              <h4 class="font-bold text-sm">Lista Dipendenti Registrati</h4>
+              <div class="overflow-x-auto border rounded-lg">
+                <table class="w-full text-xs text-left">
+                  <thead class="bg-slate-50 border-b"><tr><th class="p-2">Cognome e Nome</th><th class="p-2">Avente Diritto</th><th class="p-2">Azione</th></tr></thead>
+                  <tbody id="anagraficaTbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROTETTO: HR MAGAZZINO & ORDINI -->
+    <section id="section-magazzino" class="hidden">
+      <div id="magazzinoLocked" class="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-lg text-sm">
+        🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.
+      </div>
+
+      <div id="magazzinoUnlocked" class="hidden space-y-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="text-3xl">📦</span>
+          <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Magazzino Ticket & Tracciamento Ordini</h1>
+        </div>
+
+        <div class="card-border overflow-hidden">
+          <div class="bg-slate-50/80 px-6 py-3 border-b flex items-center gap-2 text-xs font-medium text-slate-600">
+            <span class="text-indigo-600">➕</span> Registra Nuova Fattura / Ordine Ticket
+          </div>
+          <div class="p-8 bg-white">
+            <form onsubmit="handleOrderSubmit(event)" class="space-y-6">
+              <div class="grid grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-xs font-semibold mb-2">Numero Fattura / Ordine *</label>
+                  <input type="text" id="ordFattura" required class="w-full input-custom rounded-lg px-4 py-2.5 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-2">Ticket Erogati Iniziali</label>
+                  <div class="flex items-center input-custom rounded-lg px-4 py-1.5">
+                    <input type="number" id="erogatiIniziali" value="0" min="0" class="w-full bg-transparent text-sm border-none focus:outline-none">
+                    <div class="flex items-center gap-3 text-slate-500 font-semibold ml-2">
+                      <button type="button" onclick="changeCount('erogatiIniziali', -1)" class="stepper-btn font-bold px-1">−</button>
+                      <button type="button" onclick="changeCount('erogatiIniziali', 1)" class="stepper-btn font-bold px-1">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-2">Valore Singolo Ticket (€) *</label>
+                  <div class="flex items-center input-custom rounded-lg px-4 py-1.5">
+                    <input type="text" id="valoreTicket" value="5,20" class="w-full bg-transparent text-sm border-none focus:outline-none">
+                    <div class="flex items-center gap-3 text-slate-500 font-semibold ml-2">
+                      <button type="button" onclick="changeValue('valoreTicket', -0.1)" class="stepper-btn font-bold px-1">−</button>
+                      <button type="button" onclick="changeValue('valoreTicket', 0.1)" class="stepper-btn font-bold px-1">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-2">Residuo Ordine Precedente</label>
+                  <div class="flex items-center input-custom rounded-lg px-4 py-1.5">
+                    <input type="number" id="residuoPrecedente" value="0" min="0" class="w-full bg-transparent text-sm border-none focus:outline-none">
+                    <div class="flex items-center gap-3 text-slate-500 font-semibold ml-2">
+                      <button type="button" onclick="changeCount('residuoPrecedente', -1)" class="stepper-btn font-bold px-1">−</button>
+                      <button type="button" onclick="changeCount('residuoPrecedente', 1)" class="stepper-btn font-bold px-1">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-2">Quantità Ticket Acquistati *</label>
+                  <div class="flex items-center input-custom rounded-lg px-4 py-1.5">
+                    <input type="number" id="quantitaAcquistati" value="2000" min="1" required class="w-full bg-transparent text-sm border-none focus:outline-none">
+                    <div class="flex items-center gap-3 text-slate-500 font-semibold ml-2">
+                      <button type="button" onclick="changeCount('quantitaAcquistati', -100)" class="stepper-btn font-bold px-1">−</button>
+                      <button type="button" onclick="changeCount('quantitaAcquistati', 100)" class="stepper-btn font-bold px-1">+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div><button type="submit" class="bg-white border hover:bg-slate-50 text-slate-700 text-xs font-semibold px-5 py-2.5 rounded-md shadow-sm">Salva Ordine</button></div>
+            </form>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <h3 class="text-base font-bold">📋 Riepilogo Ordini & Giacenza Ticket</h3>
+          <div class="overflow-x-auto border rounded-lg">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-50 border-b">
+                <tr><th class="p-2.5">Fattura/Ordine</th><th class="p-2.5">Valore Unitario</th><th class="p-2.5">Acquistati</th><th class="p-2.5">Erogati</th><th class="p-2.5">Residuo Precedente</th><th class="p-2.5">Ticket Residui TOT</th><th class="p-2.5">Azione</th></tr>
+              </thead>
+              <tbody id="ordiniTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="space-y-4 pt-4 border-t">
+          <h3 class="text-base font-bold">📤 Sezione Ticket Erogati (Assegnati a Richieste PRONTI)</h3>
+          <div class="overflow-x-auto border rounded-lg">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-50 border-b"><tr><th class="p-2.5">Dipendente</th><th class="p-2.5">Email</th><th class="p-2.5">Periodo</th><th class="p-2.5">N° Ticket Erogati</th><th class="p-2.5">Fattura / Ordine di Riferimento</th></tr></thead>
+              <tbody id="erogatiTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const PASSWORD_HR = "pallinerosa26!";
+    let isHrAuthenticated = false;
+
+    // LOCAL STORAGE DATABASE INIZIALIZZAZIONE
+    function initDB() {
+      if(!localStorage.getItem("db_richieste")) localStorage.setItem("db_richieste", JSON.stringify([]));
+      if(!localStorage.getItem("db_ordini")) localStorage.setItem("db_ordini", JSON.stringify([]));
+      if(!localStorage.getItem("db_matrice")) {
+        let defaultMatrice = [];
+        for(let i=1; i<=30; i++) {
+          let num = "008000" + (i < 10 ? "0" + i : i);
+          let row = { numero_tessera: num, assegnato_a: "", anno: 2026 };
+          ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"].forEach(m => row[m] = 0);
+          defaultMatrice.push(row);
+        }
+        localStorage.setItem("db_matrice", JSON.stringify(defaultMatrice));
+      }
+      if(!localStorage.getItem("db_anagrafica")) {
+        localStorage.setItem("db_anagrafica", JSON.stringify([
+          { nome_cognome: "Mario Rossi", ha_diritto: true },
+          { nome_cognome: "Giuseppe Verdi", ha_diritto: true }
+        ]));
+      }
+      if(!localStorage.getItem("db_storico_presenze")) localStorage.setItem("db_storico_presenze", JSON.stringify([]));
+    }
+    initDB();
+
+    function getDB(key) { return JSON.parse(localStorage.getItem(key) || "[]"); }
+    function setDB(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+    // SWITCH SEZIONI
+    function switchSection(sectionId) {
+      document.getElementById('hrAuthBox').classList.toggle('hidden', sectionId === 'richiesta');
+      ['richiesta', 'gestione', 'magazzino'].forEach(s => {
+        document.getElementById('section-' + s).classList.toggle('hidden', s !== sectionId);
+      });
+      if(sectionId === 'gestione') renderHRGestione();
+      if(sectionId === 'magazzino') renderHRMagazzino();
+    }
+
+    function checkPassword() {
+      const pwd = document.getElementById('hrPasswordInput').value;
+      if (pwd === PASSWORD_HR) {
+        isHrAuthenticated = true;
+        document.getElementById('pwdError').classList.add('hidden');
+        renderHRGestione();
+        renderHRMagazzino();
+      } else {
+        isHrAuthenticated = false;
+        if(pwd.length > 0) document.getElementById('pwdError').classList.remove('hidden');
+        renderHRGestione();
+        renderHRMagazzino();
+      }
+    }
+
+    function togglePasswordVisibility(id) {
+      const el = document.getElementById(id);
+      el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    function changeCount(id, delta) {
+      const el = document.getElementById(id);
+      el.value = Math.max(0, (parseInt(el.value) || 0) + delta);
+    }
+
+    function changeValue(id, delta) {
+      const el = document.getElementById(id);
+      let v = Math.max(0, (parseFloat(el.value.replace(',', '.')) || 0) + delta);
+      el.value = v.toFixed(2).replace('.', ',');
+    }
+
+    function handleFileSelect(input) {
+      const display = document.getElementById('fileNameDisplay');
+      if (input.files && input.files[0]) {
+        display.textContent = input.files[0].name;
+        display.className = "text-xs text-slate-700 font-medium";
+      }
+    }
+
+    // FORM INVIO RICHIESTA
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('reqFile');
+      const reader = new FileReader();
+
+      reader.onload = function(evt) {
+        let reqs = getDB("db_richieste");
+        reqs.push({
+          id: Date.now(),
+          email: document.getElementById('reqEmail').value,
+          nome_cognome: document.getElementById('reqNome').value,
+          mese: document.getElementById('reqMese').value,
+          anno: document.getElementById('reqAnno').value,
+          num_ticket: parseInt(document.getElementById('ticketCount').value),
+          file_url: evt.target.result,
+          file_name: fileInput.files[0].name,
+          stato: "In lavorazione",
+          ordine_fattura: null
+        });
+        setDB("db_richieste", reqs);
+        alert('✅ Richiesta inviata con successo!');
+        e.target.reset();
+        document.getElementById('fileNameDisplay').textContent = '200MB per file • PDF, PNG, JPG';
+        document.getElementById('fileNameDisplay').className = 'text-xs text-slate-400';
+      };
+
+      if(fileInput.files[0]) reader.readAsDataURL(fileInput.files[0]);
+    }
+
+    // RENDER DASHBOARD GESTIONE HR
+    function renderHRGestione() {
+      document.getElementById('gestioneLocked').classList.toggle('hidden', isHrAuthenticated);
+      document.getElementById('gestioneUnlocked').classList.toggle('hidden', !isHrAuthenticated);
+      if(isHrAuthenticated) {
+        renderRichiesteHR();
+        renderMatrice();
+        renderAnagrafica();
+        renderStoricoPresenze();
+      }
+    }
+
+    function switchMainTab(tab) {
+      document.getElementById('mainTab1Btn').className = tab === 'tab1' ? 'tab-active pb-3 flex items-center gap-2' : 'text-slate-500 pb-3 flex items-center gap-2';
+      document.getElementById('mainTab2Btn').className = tab === 'tab2' ? 'tab-active pb-3 flex items-center gap-2' : 'text-slate-500 pb-3 flex items-center gap-2';
+      document.getElementById('mainTab1').classList.toggle('hidden', tab !== 'tab1');
+      document.getElementById('mainTab2').classList.toggle('hidden', tab !== 'tab2');
+    }
+
+    function switchSubTab(sub) {
+      document.getElementById('subTabABtn').className = sub === 'subA' ? 'subtab-active pb-2' : 'text-slate-500 pb-2';
+      document.getElementById('subTabBBtn').className = sub === 'subB' ? 'subtab-active pb-2' : 'text-slate-500 pb-2';
+      document.getElementById('subTabCBtn').className = sub === 'subC' ? 'subtab-active pb-2' : 'text-slate-500 pb-2';
+      document.getElementById('subTabA').classList.toggle('hidden', sub !== 'subA');
+      document.getElementById('subTabB').classList.toggle('hidden', sub !== 'subB');
+      document.getElementById('subTabC').classList.toggle('hidden', sub !== 'subC');
+    }
+
+    function renderRichiesteHR() {
+      const container = document.getElementById('richiesteList');
+      const reqs = getDB("db_richieste");
+      const ordini = getDB("db_ordini");
+      const filtro = document.querySelector('input[name="filtroStato"]:checked').value;
+
+      container.innerHTML = "";
+      const list = reqs.filter(r => filtro === 'Tutti' || r.stato === filtro);
+
+      if(list.length === 0) {
+        container.innerHTML = `<div class="bg-blue-50 text-blue-600 text-xs p-4 rounded-xl">Nessuna richiesta trovata.</div>`;
+        return;
+      }
+
+      list.forEach(r => {
+        const isPronto = r.stato === 'Pronti';
+        const color = isPronto ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200';
+        const badge = isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE';
+
+        let ordOptions = ordini.map(o => `<option value="${o.fattura}" ${r.ordine_fattura === o.fattura ? 'selected':''}>${o.fattura}</option>`).join('');
+
+        container.innerHTML += `
+          <div class="${color} border p-4 rounded-lg space-y-3">
+            <div class="flex justify-between items-center">
+              <h4 class="font-bold text-sm text-slate-800">${r.nome_cognome} — <span class="text-xs font-semibold">${badge}</span></h4>
+              <button onclick="eliminaRichiesta(${r.id})" class="text-xs text-red-600 hover:underline">🗑️ Elimina</button>
+            </div>
+            <p class="text-xs text-slate-600"><b>Email:</b> ${r.email} | <b>Periodo:</b> ${r.mese} ${r.anno} | <b>N° Ticket:</b> ${r.num_ticket}</p>
+            <div class="flex items-center gap-4 pt-1">
+              <a href="${r.file_url}" download="${r.file_name}" class="bg-white border px-3 py-1.5 rounded text-xs font-medium text-slate-700 hover:bg-slate-50">📄 Scarica/Apri Modulo Firmato</a>
+              ${!isPronto ? `
+                <div class="flex items-center gap-2">
+                  <select id="selOrd_\${r.id}" class="input-custom text-xs rounded px-2 py-1">\${ordOptions || '<option>Nessun Ordine</option>'}</select>
+                  <button onclick="segnaPronto(\${r.id})" class="bg-emerald-600 text-white text-xs font-semibold px-3 py-1 rounded hover:bg-emerald-700">Segna come PRONTI 🚀</button>
+                </div>
+              ` : `<span class="text-xs text-emerald-700 font-semibold">Associato a Ordine: \${r.ordine_fattura}</span>`}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function segnaPronto(id) {
+      let reqs = getDB("db_richieste");
+      const sel = document.getElementById(`selOrd_${id}`);
+      if(!sel || !sel.value || sel.value === 'Nessun Ordine') { alert('Seleziona un ordine valido.'); return; }
+
+      let req = reqs.find(r => r.id === id);
+      if(req) {
+        req.stato = 'Pronti';
+        req.ordine_fattura = sel.value;
+        setDB("db_richieste", reqs);
+        renderRichiesteHR();
+        renderHRMagazzino();
+      }
+    }
+
+    function eliminaRichiesta(id) {
+      if(confirm('Confermi eliminazione?')) {
+        let reqs = getDB("db_richieste").filter(r => r.id !== id);
+        setDB("db_richieste", reqs);
+        renderRichiesteHR();
+        renderHRMagazzino();
+      }
+    }
+
+    // MATRICE TESSERE
+    function renderMatrice() {
+      const tbody = document.getElementById('matriceTbody');
+      const anno = parseInt(document.getElementById('matriceAnno').value);
+      const matrice = getDB("db_matrice").filter(m => m.anno === anno);
+
+      tbody.innerHTML = "";
+      let totTicket = 0;
+
+      matrice.forEach((r, idx) => {
+        let mCells = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"].map(m => {
+          let val = r[m] || 0;
+          totTicket += parseInt(val);
+          return `<td class="border-r p-1 text-center"><input type="number" min="0" value="${val}" data-tess="${r.numero_tessera}" data-mese="${m}" class="w-12 text-center border-none focus:ring-1 focus:ring-red-400 text-xs"></td>`;
+        }).join('');
+
+        tbody.innerHTML += `
+          <tr class="border-b">
+            <td class="p-2 border-r font-medium">${r.numero_tessera}</td>
+            <td class="p-2 border-r"><input type="text" value="${r.assegnato_a || ''}" data-tess="${r.numero_tessera}" data-field="assegnato_a" class="w-full text-xs input-custom rounded px-2 py-1"></td>
+            ${mCells}
+          </tr>
+        `;
+      });
+
+      document.getElementById('totTicketMatrice').textContent = totTicket + " ticket";
+      document.getElementById('totValoreMatrice').textContent = "€ " + (totTicket * 5.20).toFixed(2).replace('.', ',');
+    }
+
+    function salvaMatriceTessere() {
+      const anno = parseInt(document.getElementById('matriceAnno').value);
+      let matrice = getDB("db_matrice");
+
+      document.querySelectorAll('#matriceTbody input').forEach(input => {
+        const tess = input.getAttribute('data-tess');
+        const mese = input.getAttribute('data-mese');
+        const field = input.getAttribute('data-field');
+
+        let row = matrice.find(m => m.numero_tessera === tess && m.anno === anno);
+        if(row) {
+          if(mese) row[mese] = parseInt(input.value) || 0;
+          if(field) row[field] = input.value;
+        }
+      });
+
+      setDB("db_matrice", matrice);
+      alert('✅ Tabella tessere salvata!');
+      renderMatrice();
+    }
+
+    function addNuovaTesseraPrompt() {
+      const num = prompt("Inserisci Numero Nuova Tessera:");
+      if(num) {
+        const anno = parseInt(document.getElementById('matriceAnno').value);
+        let matrice = getDB("db_matrice");
+        let newRow = { numero_tessera: num, assegnato_a: "", anno: anno };
+        ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"].forEach(m => newRow[m] = 0);
+        matrice.push(newRow);
+        setDB("db_matrice", matrice);
+        renderMatrice();
+      }
+    }
+
+    // LIBRO PRESENZE PARSER
+    let tempCalculatedPresenze = [];
+
+    function elaboraLibroPresenze() {
+      const fileInput = document.getElementById('presFile');
+      if(!fileInput.files[0]) { alert('Seleziona un file!'); return; }
+
+      const mese = document.getElementById('presMese').value;
+      const anno = document.getElementById('presAnno').value;
+      const anagrafica = getDB("db_anagrafica").filter(a => a.ha_diritto);
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, {header: 1});
+
+        tempCalculatedPresenze = [];
+        const tbody = document.getElementById('presenzeResultTbody');
+        tbody.innerHTML = "";
+
+        anagrafica.forEach(dip => {
+          let count = 0;
+          let trovato = false;
+
+          json.forEach(row => {
+            let rowStr = row.join(" ").toLowerCase();
+            if(rowStr.includes(dip.nome_cognome.toLowerCase())) {
+              trovato = true;
+            }
+            if(trovato && (rowStr.includes("preord") || rowStr.includes("smartw"))) {
+              let valAQ = row[42]; // Colonna AQ
+              if(valAQ !== undefined && valAQ !== null) {
+                let n = parseInt(valAQ);
+                if(!isNaN(n)) count += n;
+              }
+            }
+          });
+
+          tempCalculatedPresenze.push({ nome: dip.nome_cognome, count: count, mese: mese, anno: anno });
+
+          tbody.innerHTML += `
+            <tr class="border-b">
+              <td class="p-2 font-medium">${dip.nome_cognome}</td>
+              <td class="p-2">${trovato ? '✅ SI' : '❌ NO'}</td>
+              <td class="p-2 font-bold">${count}</td>
+              <td class="p-2 text-green-700">€ ${(count * 5.20).toFixed(2)}</td>
+            </tr>
+          `;
+        });
+
+        // Salva in storico
+        let storico = getDB("db_storico_presenze");
+        storico.push({ id: Date.now(), mese: mese, anno: anno, file_name: fileInput.files[0].name });
+        setDB("db_storico_presenze", storico);
+        renderStoricoPresenze();
+
+        document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
+      };
+
+      reader.readAsArrayBuffer(fileInput.files[0]);
+    }
+
+    function popolaMatriceDaPresenze() {
+      if(tempCalculatedPresenze.length === 0) return;
+      let matrice = getDB("db_matrice");
+
+      tempCalculatedPresenze.forEach(item => {
+        let row = matrice.find(m => m.assegnato_a.toLowerCase().includes(item.nome.toLowerCase()) && m.anno === parseInt(item.anno));
+        if(row) {
+          row[item.mese.toLowerCase()] = item.count;
+        }
+      });
+
+      setDB("db_matrice", matrice);
+      alert('✅ Matrice tessere popolata!');
+      renderMatrice();
+    }
+
+    function renderStoricoPresenze() {
+      const container = document.getElementById('storicoPresenzeList');
+      const storico = getDB("db_storico_presenze");
+      container.innerHTML = storico.map(s => `
+        <div class="flex justify-between items-center bg-slate-50 p-2 rounded border">
+          <span>📁 <b>${s.mese.toUpperCase()} ${s.anno}</b> — ${s.file_name}</span>
+          <span class="text-xs text-slate-400">Archiviato</span>
+        </div>
+      `).join('') || '<p class="text-slate-400">Nessun file archiviato.</p>';
+    }
+
+    // ANAGRAFICA
+    function renderAnagrafica() {
+      const tbody = document.getElementById('anagraficaTbody');
+      const list = getDB("db_anagrafica");
+      tbody.innerHTML = list.map((a, idx) => `
+        <tr class="border-b">
+          <td class="p-2 font-medium">${a.nome_cognome}</td>
+          <td class="p-2">${a.ha_diritto ? '✅ Si' : '❌ No'}</td>
+          <td class="p-2"><button onclick="rimuoviDipendente(${idx})" class="text-red-500 hover:underline">Rimuovi</button></td>
+        </tr>
+      `).join('');
+    }
+
+    function salvaDipendenteAnagrafica() {
+      const nome = document.getElementById('anagNome').value;
+      const diritto = document.getElementById('anagDiritto').checked;
+      if(!nome) return;
+
+      let anag = getDB("db_anagrafica");
+      anag.push({ nome_cognome: nome, ha_diritto: diritto });
+      setDB("db_anagrafica", anag);
+      document.getElementById('anagNome').value = "";
+      renderAnagrafica();
+    }
+
+    function rimuoviDipendente(idx) {
+      let anag = getDB("db_anagrafica");
+      anag.splice(idx, 1);
+      setDB("db_anagrafica", anag);
+      renderAnagrafica();
+    }
+
+    // MAGAZZINO & ORDINI
+    function renderHRMagazzino() {
+      document.getElementById('magazzinoLocked').classList.toggle('hidden', isHrAuthenticated);
+      document.getElementById('magazzinoUnlocked').classList.toggle('hidden', !isHrAuthenticated);
+      if(isHrAuthenticated) {
+        renderOrdiniTabelle();
+      }
+    }
+
+    function handleOrderSubmit(e) {
+      e.preventDefault();
+      let ordini = getDB("db_ordini");
+      ordini.push({
+        id: Date.now(),
+        fattura: document.getElementById('ordFattura').value,
+        valore: document.getElementById('valoreTicket').value,
+        acquistati: parseInt(document.getElementById('quantitaAcquistati').value),
+        erogati_iniziali: parseInt(document.getElementById('erogatiIniziali').value),
+        residuo_precedente: parseInt(document.getElementById('residuoPrecedente').value)
+      });
+      setDB("db_ordini", ordini);
+      alert('✅ Ordine salvato!');
+      e.target.reset();
+      renderOrdiniTabelle();
+    }
+
+    function renderOrdiniTabelle() {
+      const ordiniTbody = document.getElementById('ordiniTbody');
+      const erogatiTbody = document.getElementById('erogatiTbody');
+
+      const ordini = getDB("db_ordini");
+      const richieste = getDB("db_richieste").filter(r => r.stato === 'Pronti');
+
+      ordiniTbody.innerHTML = "";
+      erogatiTbody.innerHTML = "";
+
+      ordini.forEach(o => {
+        let erogatiRichieste = richieste.filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + r.num_ticket, 0);
+        let erogatiTotali = o.erogati_iniziali + erogatiRichieste;
+        let residuoTotale = Math.max(0, (o.acquistati + o.residuo_precedente) - erogatiTotali);
+
+        ordiniTbody.innerHTML += `
+          <tr class="border-b">
+            <td class="p-2.5 font-bold">${o.fattura}</td>
+            <td class="p-2.5">€ ${o.valore}</td>
+            <td class="p-2.5">${o.acquistati}</td>
+            <td class="p-2.5 text-amber-600 font-semibold">${erogatiTotali}</td>
+            <td class="p-2.5">${o.residuo_precedente}</td>
+            <td class="p-2.5 text-emerald-600 font-bold">${residuoTotale}</td>
+            <td class="p-2.5"><button onclick="eliminaOrdine(${o.id})" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
+          </tr>
+        `;
+      });
+
+      richieste.forEach(r => {
+        erogatiTbody.innerHTML += `
+          <tr class="border-b">
+            <td class="p-2.5 font-medium">${r.nome_cognome}</td>
+            <td class="p-2.5">${r.email}</td>
+            <td class="p-2.5">${r.mese} ${r.anno}</td>
+            <td class="p-2.5 font-bold">${r.num_ticket}</td>
+            <td class="p-2.5 text-indigo-600 font-semibold">${r.ordine_fattura}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function eliminaOrdine(id) {
+      if(confirm('Confermi eliminazione ordine?')) {
+        let ordini = getDB("db_ordini").filter(o => o.id !== id);
+        setDB("db_ordini", ordini);
+        renderOrdiniTabelle();
+      }
+    }
+  </script>
+</body>
+</html>

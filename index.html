@@ -22,7 +22,7 @@
 <body class="bg-white min-h-screen flex text-slate-800">
 
   <!-- SIDEBAR LEFT -->
-  <aside class="w-80 stSidebar p-6 flex flex-col justify-between shrink-0 min-h-screen border-r border-slate-200">
+  <aside class="w-80 stSidebar p-6 flex flex-col justify-start shrink-0 min-h-screen border-r border-slate-200">
     <div>
       <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-2">
@@ -50,8 +50,8 @@
       </div>
     </div>
 
-    <!-- Area Riservata HR -->
-    <div id="hrAuthBox" class="pt-6 border-t border-slate-300/70">
+    <!-- Area Riservata HR POSIZIONATA SUBITO SOTTO LE SEZIONI -->
+    <div id="hrAuthBox" class="mt-6 pt-6 border-t border-slate-300/70">
       <div class="flex items-center gap-2 mb-3">
         <span class="text-base">🔒</span>
         <h3 class="text-base font-bold text-slate-800">Area Riservata HR</h3>
@@ -65,21 +65,21 @@
     </div>
   </aside>
 
-  <!-- CONTENUTO PRINCIPALE -->
-  <main class="flex-1 p-10 overflow-x-auto">
+  <!-- CONTENUTO PRINCIPALE FULL WIDTH (SENZA MAX-WIDTH) -->
+  <main class="flex-1 p-10 overflow-x-auto w-full max-w-none">
     <div class="flex justify-end mb-4">
       <span class="text-slate-400 text-xl font-bold cursor-pointer hover:text-slate-600">⋮</span>
     </div>
 
     <!-- SEZIONE 1: NUOVA RICHIESTA -->
-    <section id="section-richiesta" class="hidden max-w-5xl">
+    <section id="section-richiesta" class="hidden w-full">
       <div class="flex items-center gap-3 mb-2">
         <span class="text-3xl">🎟️</span>
         <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Richiesta</h1>
       </div>
       <p class="text-sm text-slate-600 mb-8">Compila i campi sottostanti e carica la foto o il PDF del modulo firmato.</p>
 
-      <div class="stCard p-8 bg-white">
+      <div class="stCard p-8 bg-white w-full">
         <form onsubmit="handleFormSubmit(event)" class="space-y-6">
           <div class="grid grid-cols-2 gap-6">
             <div>
@@ -92,7 +92,7 @@
               <label class="block text-xs font-semibold text-slate-700 mb-2">Mese *</label>
               <div class="stInput px-4 py-2.5">
                 <select id="reqMese" required class="w-full bg-transparent border-none focus:outline-none text-sm appearance-none">
-                  <!-- Popolato dinamicamente da JS -->
+                  <!-- Popolato dinamicamente -->
                 </select>
               </div>
             </div>
@@ -116,7 +116,7 @@
               <label class="block text-xs font-semibold text-slate-700 mb-2">Anno *</label>
               <div class="stInput px-4 py-2.5">
                 <select id="reqAnno" required onchange="aggiornaMesiFormRichiesta()" class="w-full bg-transparent border-none focus:outline-none text-sm appearance-none">
-                  <!-- Popolato dinamicamente da JS (2026 -> 2060) -->
+                  <!-- Popolato dinamicamente (2026 -> 2060) -->
                 </select>
               </div>
             </div>
@@ -140,99 +140,115 @@
       </div>
     </section>
 
-    <!-- SEZIONE 2: HR GESTIONE RICHIESTE -->
-    <section id="section-gestione" class="block max-w-5xl">
+    <!-- SEZIONE 2: HR GESTIONE RICHIESTE FULL WIDTH -->
+    <section id="section-gestione" class="block w-full">
       <div id="gestioneLocked" class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4 hidden">
         🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.
       </div>
 
-      <div id="gestioneUnlocked" class="space-y-6">
+      <div id="gestioneUnlocked" class="space-y-6 w-full">
         <div class="flex items-center gap-3 mb-2">
           <span class="text-3xl">📋</span>
           <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Dashboard Gestione Richieste (HR)</h1>
         </div>
 
         <!-- MAIN TABS -->
-        <div class="flex gap-8 border-b border-slate-200 text-xs font-medium pb-2">
+        <div class="flex gap-8 border-b border-slate-200 text-xs font-medium pb-2 w-full">
           <button id="mainTab1Btn" onclick="switchMainTab('tab1')" class="text-slate-500 pb-2 flex items-center gap-2"><span>📋</span> Richieste Moduli Cartacei/PDF</button>
           <button id="mainTab2Btn" onclick="switchMainTab('tab2')" class="tab-active pb-2 flex items-center gap-2"><span>💳</span> Ticket Digitali (Tessere)</button>
         </div>
 
         <!-- MAIN TAB 1: CARTACEI -->
-        <div id="mainTab1" class="hidden space-y-4">
+        <div id="mainTab1" class="hidden space-y-4 w-full">
           <div class="flex items-center gap-4 text-xs font-medium">
             <span>Filtra per Stato:</span>
             <label class="flex items-center gap-1"><input type="radio" name="filtroStato" value="Tutti" checked onchange="renderRichiesteHR()"> Tutti</label>
             <label class="flex items-center gap-1"><input type="radio" name="filtroStato" value="In lavorazione" onchange="renderRichiesteHR()"> In lavorazione</label>
             <label class="flex items-center gap-1"><input type="radio" name="filtroStato" value="Pronti" onchange="renderRichiesteHR()"> Pronti</label>
           </div>
-          <div id="richiesteList" class="space-y-3"></div>
+          <div id="richiesteList" class="space-y-3 w-full"></div>
         </div>
 
-        <!-- MAIN TAB 2: TICKET DIGITALI -->
-        <div id="mainTab2" class="space-y-6">
+        <!-- MAIN TAB 2: TICKET DIGITALI FULL WIDTH -->
+        <div id="mainTab2" class="space-y-6 w-full">
           <div class="flex items-center gap-2">
             <span class="text-xl">💳</span>
             <h2 class="text-xl font-bold text-slate-800">Tracciamento Tessere Digitali & Calcolo Presenze</h2>
           </div>
 
           <!-- SUB TABS -->
-          <div class="flex gap-6 border-b border-slate-200 text-xs font-medium pb-2">
+          <div class="flex gap-6 border-b border-slate-200 text-xs font-medium pb-2 w-full">
             <button id="subTabABtn" onclick="switchSubTab('subA')" class="subtab-active pb-2 flex items-center gap-1"><span>📊</span> Matrice Tessere Digitali</button>
             <button id="subTabBBtn" onclick="switchSubTab('subB')" class="text-slate-500 pb-2 flex items-center gap-1"><span>📁</span> Upload & Storico Libro Presenze</button>
             <button id="subTabCBtn" onclick="switchSubTab('subC')" class="text-slate-500 pb-2 flex items-center gap-1"><span>👥</span> Anagrafica Nominativi con Diritto</button>
           </div>
 
-          <!-- SUB A: MATRICE TESSERE DIGITALI -->
-          <div id="subTabA" class="space-y-4">
-            <div class="flex justify-between items-center">
+          <!-- SUB A: MATRICE TESSERE DIGITALI FULL WIDTH -->
+          <div id="subTabA" class="space-y-4 w-full">
+            <div class="flex justify-between items-center w-full">
               <div class="flex items-center gap-2 text-xs">
-                <label class="font-semibold">Seleziona Anno di Riferimento:</label>
-                <select id="matriceAnno" onchange="renderMatrice()" class="stInput px-3 py-1 font-semibold">
+                <label class="font-semibold text-slate-700">Seleziona Anno di Riferimento:</label>
+                <select id="matriceAnno" onchange="renderMatrice()" class="stInput px-3 py-1.5 font-semibold text-slate-800">
                   <!-- Popolato dinamicamente da JS (2026 -> 2060) -->
                 </select>
               </div>
-              <button onclick="addNuovaTesseraPrompt()" class="stBtn px-3 py-1 text-xs font-medium">➕ Aggiungi Nuova Tessera Digital</button>
+              <button onclick="addNuovaTesseraPrompt()" class="stBtn px-4 py-2 text-xs font-semibold shadow-sm rounded-lg flex items-center gap-2">
+                <span>➕</span> Aggiungi Nuova Tessera Digital
+              </button>
             </div>
 
-            <div class="overflow-x-auto border rounded-lg">
+            <div class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-3 flex items-center gap-2 font-medium">
+              <span>💡</span> Inserisci o modifica i dati nelle celle e salva.
+            </div>
+
+            <div class="overflow-x-auto border rounded-lg w-full">
               <table class="w-full text-xs text-left border-collapse">
-                <thead class="bg-slate-50 border-b text-slate-700">
+                <thead class="bg-slate-50 border-b text-slate-600 font-semibold">
                   <tr id="matriceTheadRow">
-                    <!-- Popolato dinamicamente a seconda dell'anno (solo ott-dic per 2026, gen-dic per >2026) -->
+                    <!-- Popolato dinamicamente -->
                   </tr>
                 </thead>
-                <tbody id="matriceTbody">
-                  <!-- Popolato dinamicamente da JS -->
+                <tbody id="matriceTbody" class="divide-y divide-slate-100">
+                  <!-- Popolato dinamicamente -->
                 </tbody>
               </table>
             </div>
 
-            <div class="flex justify-between items-center pt-2 text-xs font-semibold">
-              <button onclick="salvaMatriceTessere()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md shadow-sm">💾 Salva Modifiche Tabella Tessere</button>
-              <div class="flex gap-6 text-xs">
-                <div>Totale Ticket Caricati: <span id="totTicketMatrice" class="text-red-500 font-bold">0 ticket</span></div>
-                <div>Valore Economico Totale: <span id="totValoreMatrice" class="text-emerald-600 font-bold">€ 0,00</span></div>
+            <div class="pt-2">
+              <button onclick="salvaMatriceTessere()" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2">
+                <span>💾</span> Salva Modifiche Tabella Tessere
+              </button>
+            </div>
+
+            <!-- RECAP NUMERO TICKET E VALORE ECONOMICO (ESATTO DEGLI SCREENSHOT) -->
+            <div class="pt-6 border-t border-slate-200 mt-6 grid grid-cols-2 gap-8 w-full">
+              <div>
+                <p id="labelTotTicket" class="text-xs text-slate-500 font-semibold mb-1">Totale Ticket Caricati (2026)</p>
+                <p id="totTicketMatrice" class="text-3xl font-bold text-slate-800">0 ticket</p>
+              </div>
+              <div>
+                <p id="labelTotValore" class="text-xs text-slate-500 font-semibold mb-1">Valore Economico Totale (2026)</p>
+                <p id="totValoreMatrice" class="text-3xl font-bold text-slate-800">€ 0.00</p>
               </div>
             </div>
           </div>
 
-          <!-- SUB B: PRESENZE -->
-          <div id="subTabB" class="hidden space-y-4">
-            <div class="stCard p-6 space-y-4">
+          <!-- SUB B: PRESENZE FULL WIDTH -->
+          <div id="subTabB" class="hidden space-y-4 w-full">
+            <div class="stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs text-slate-800">📄 Upload Nuovo Libro Presenze Mensile (Colonna AQ)</h4>
               <p class="text-xs text-slate-500">Vengono letti i valori per le causali <b>PREORD</b> e <b>SMARTW</b> dai dipendenti abilitati nell'anagrafica.</p>
               <div class="grid grid-cols-3 gap-4">
                 <div>
                   <label class="block text-xs font-semibold mb-1">Mese Presenze:</label>
                   <select id="presMese" class="stInput p-2 text-xs w-full">
-                    <!-- Popolato dinamicamente in base all'anno selezionato -->
+                    <!-- Popolato dinamicamente -->
                   </select>
                 </div>
                 <div>
                   <label class="block text-xs font-semibold mb-1">Anno Presenze:</label>
                   <select id="presAnno" onchange="aggiornaMesiPresenze()" class="stInput p-2 text-xs w-full">
-                    <!-- Popolato dinamicamente (2026 -> 2060) -->
+                    <!-- Popolato dinamicamente -->
                   </select>
                 </div>
                 <div>
@@ -243,20 +259,20 @@
               <button onclick="elaboraLibroPresenze()" class="stBtn px-4 py-2 text-xs font-semibold">🧮 Calcola Spettanze dal File</button>
             </div>
 
-            <div id="risultatiPresenzeBox" class="hidden stCard p-6 space-y-4">
+            <div id="risultatiPresenzeBox" class="hidden stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs">🧮 Risultati Calcolo Spettanze Ticket</h4>
               <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket AQ (PREORD+SMARTW)</th><th class="p-2">Valore (€)</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
               <button onclick="popolaMatriceDaPresenze()" class="bg-red-500 text-white px-4 py-2 rounded-md text-xs font-semibold">⚡ Applica e Popola Matrice Tessere</button>
             </div>
 
-            <div class="stCard p-6 space-y-3">
+            <div class="stCard p-6 space-y-3 w-full">
               <h4 class="font-bold text-xs">📚 Archivio e Storico Libri Presenze</h4>
               <div id="storicoPresenzeList" class="text-xs space-y-2"></div>
             </div>
           </div>
 
-          <!-- SUB C: ANAGRAFICA NOMINATIVI CON DIRITTO -->
-          <div id="subTabC" class="hidden space-y-6">
+          <!-- SUB C: ANAGRAFICA NOMINATIVI FULL WIDTH -->
+          <div id="subTabC" class="hidden space-y-6 w-full">
             <div class="flex items-center gap-2">
               <span class="text-xl">👥</span>
               <h2 class="text-2xl font-bold text-slate-800">Anagrafica Personale e Gestione Diritto Ticket</h2>
@@ -264,7 +280,7 @@
             <p class="text-xs text-slate-600 -mt-4">Aggiungi o modifica i dipendenti che hanno diritto a <b>1 ticket per giorno lavorato</b>.</p>
 
             <!-- FORM AGGIUNTA DIPENDENTE -->
-            <div class="stCard p-6 bg-white">
+            <div class="stCard p-6 bg-white w-full">
               <form onsubmit="salvaDipendenteAnagrafica(event)" class="space-y-4">
                 <div class="grid grid-cols-12 gap-6 items-center">
                   <div class="col-span-9">
@@ -296,11 +312,11 @@
               </form>
             </div>
 
-            <!-- TABELLA LISTA DIPENDENTI REGISTRATI -->
-            <div class="space-y-3">
+            <!-- TABELLA LISTA DIPENDENTI REGISTRATI (NUMERAZIONE DA 1) -->
+            <div class="space-y-3 w-full">
               <h3 class="text-lg font-bold text-slate-800">Lista Dipendenti Registrati</h3>
               
-              <div class="stCard overflow-hidden">
+              <div class="stCard overflow-hidden w-full">
                 <table class="w-full text-xs text-left border-collapse">
                   <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
                     <tr>
@@ -318,7 +334,7 @@
             </div>
 
             <!-- ACCORDION RIMUOVI DIPENDENTE -->
-            <div class="stCard overflow-hidden">
+            <div class="stCard overflow-hidden w-full">
               <div class="bg-slate-50/80 px-4 py-2.5 border-b border-slate-200 text-xs text-slate-700 flex items-center gap-2 font-medium">
                 <span>⌄</span>
                 <span>🗑️</span>
@@ -344,19 +360,19 @@
       </div>
     </section>
 
-    <!-- SEZIONE 3: HR MAGAZZINO & ORDINI -->
-    <section id="section-magazzino" class="hidden max-w-5xl">
+    <!-- SEZIONE 3: HR MAGAZZINO FULL WIDTH -->
+    <section id="section-magazzino" class="hidden w-full">
       <div id="magazzinoLocked" class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4">
         🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.
       </div>
 
-      <div id="magazzinoUnlocked" class="hidden space-y-6">
+      <div id="magazzinoUnlocked" class="hidden space-y-6 w-full">
         <div class="flex items-center gap-3 mb-4">
           <span class="text-3xl">📦</span>
           <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Magazzino Ticket & Tracciamento Ordini</h1>
         </div>
 
-        <div class="stCard overflow-hidden">
+        <div class="stCard overflow-hidden w-full">
           <div class="bg-slate-50/80 px-6 py-3 border-b border-slate-200 text-xs text-slate-600 flex items-center gap-2">
             <span>⌄</span>
             <span class="text-indigo-600">➕</span>
@@ -416,26 +432,14 @@
           </div>
         </div>
 
-        <div class="space-y-4">
+        <div class="space-y-4 w-full">
           <h3 class="text-sm font-bold text-slate-800">📋 Riepilogo Ordini & Giacenza Ticket</h3>
-          <div class="stCard overflow-hidden">
+          <div class="stCard overflow-hidden w-full">
             <table class="w-full text-xs text-left border-collapse">
               <thead class="bg-slate-50 border-b">
                 <tr><th class="p-2.5">Fattura/Ordine</th><th class="p-2.5">Valore Unitario</th><th class="p-2.5">Acquistati</th><th class="p-2.5">Erogati</th><th class="p-2.5">Residuo Prec.</th><th class="p-2.5">Ticket Residui TOT</th><th class="p-2.5">Azione</th></tr>
               </thead>
               <tbody id="ordiniTbody" class="divide-y divide-slate-100"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="space-y-4 pt-4 border-t">
-          <h3 class="text-sm font-bold text-slate-800">📤 Sezione Ticket Erogati</h3>
-          <div class="stCard overflow-hidden">
-            <table class="w-full text-xs text-left border-collapse">
-              <thead class="bg-slate-50 border-b">
-                <tr><th class="p-2.5">Dipendente</th><th class="p-2.5">Email</th><th class="p-2.5">Periodo</th><th class="p-2.5">N° Ticket Erogati</th><th class="p-2.5">Fattura / Ordine</th></tr>
-              </thead>
-              <tbody id="erogatiTbody" class="divide-y divide-slate-100"></tbody>
             </table>
           </div>
         </div>
@@ -446,9 +450,8 @@
 
   <script>
     const PASSWORD_HR = "pallinerosa26!";
-    let isHrAuthenticated = false;
+    let isHrAuthenticated = true;
 
-    // COSTANTI MESI
     const MESI_2026 = ["Ottobre", "Novembre", "Dicembre"];
     const MESI_TUTTI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
 
@@ -492,7 +495,6 @@
     function getDB(k) { return JSON.parse(localStorage.getItem(k) || "[]"); }
     function setDB(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
 
-    // POPOLAMENTO SELECT ANNI (2026 -> 2060)
     function popolaAnniSelect() {
       const selectAnnoMatrice = document.getElementById('matriceAnno');
       const selectAnnoRichiesta = document.getElementById('reqAnno');
@@ -515,7 +517,6 @@
       const anno = parseInt(document.getElementById('reqAnno').value);
       const selectMese = document.getElementById('reqMese');
       const listaMesi = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
-
       selectMese.innerHTML = listaMesi.map(m => `<option value="${m}">${m}</option>`).join('');
     }
 
@@ -523,7 +524,6 @@
       const anno = parseInt(document.getElementById('presAnno').value);
       const selectMese = document.getElementById('presMese');
       const listaMesi = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
-
       selectMese.innerHTML = listaMesi.map(m => `<option value="${m.toLowerCase()}">${m}</option>`).join('');
     }
 
@@ -532,8 +532,8 @@
       ['richiesta', 'gestione', 'magazzino'].forEach(s => {
         document.getElementById('section-' + s).classList.toggle('hidden', s !== sectionId);
       });
-      if(sectionId === 'gestione' && isHrAuthenticated) renderHRGestione();
-      if(sectionId === 'magazzino' && isHrAuthenticated) renderHRMagazzino();
+      if(sectionId === 'gestione') renderHRGestione();
+      if(sectionId === 'magazzino') renderHRMagazzino();
     }
 
     function checkPassword() {
@@ -649,7 +649,7 @@
         let isPronto = r.stato === 'Pronti';
         let ordOpts = ordini.map(o => `<option value="${o.fattura}" ${r.ordine_fattura === o.fattura ? 'selected':''}>${o.fattura}</option>`).join('');
         container.innerHTML += `
-          <div class="stCard p-4 bg-white space-y-3 text-xs">
+          <div class="stCard p-4 bg-white space-y-3 text-xs w-full">
             <div class="flex justify-between items-center font-bold">
               <span>${r.nome_cognome} — <span class="${isPronto ? 'text-emerald-600':'text-amber-600'}">${isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE'}</span></span>
               <button onclick="eliminaRichiesta(${r.id})" class="text-red-500 hover:underline">🗑️ Elimina</button>
@@ -669,30 +669,6 @@
       });
     }
 
-    function segnaPronto(id) {
-      let reqs = getDB("db_richieste");
-      let sel = document.getElementById(`selOrd_${id}`);
-      if(!sel || !sel.value || sel.value === 'Nessun Ordine') { alert('Seleziona un ordine dal magazzino.'); return; }
-      let req = reqs.find(r => r.id === id);
-      if(req) {
-        req.stato = 'Pronti';
-        req.ordine_fattura = sel.value;
-        setDB("db_richieste", reqs);
-        renderHRGestione();
-        renderHRMagazzino();
-      }
-    }
-
-    function eliminaRichiesta(id) {
-      if(confirm('Confermi eliminazione?')) {
-        let reqs = getDB("db_richieste").filter(r => r.id !== id);
-        setDB("db_richieste", reqs);
-        renderHRGestione();
-        renderHRMagazzino();
-      }
-    }
-
-    // RENDER MATRICE TESSERE CON MENU A TENDINA PER ANAGRAFICA E MESI DINAMICI (2026 = OTT-DIC, >2026 = GEN-DIC)
     function renderMatrice() {
       const tbody = document.getElementById('matriceTbody');
       const theadRow = document.getElementById('matriceTheadRow');
@@ -702,10 +678,9 @@
 
       const listaMesiTabella = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
 
-      // Generazione Header Tabella
-      let htmlHead = `<th class="p-2 border-r">N° Tessera</th><th class="p-2 border-r min-w-[200px]">Assegnato Momentaneamente a</th>`;
+      let htmlHead = `<th class="p-2.5 border-r">N° Tessera</th><th class="p-2.5 border-r min-w-[200px]">Assegnato Momentaneamente a</th>`;
       listaMesiTabella.forEach(m => {
-        htmlHead += `<th class="p-2 text-center border-r">${m.substring(0,3)}</th>`;
+        htmlHead += `<th class="p-2.5 text-center border-r">${m.substring(0,3)}</th>`;
       });
       theadRow.innerHTML = htmlHead;
 
@@ -713,7 +688,6 @@
       let tot = 0;
 
       mat.forEach(r => {
-        // Opzioni Menu a Tendina Dipendenti dall'Anagrafica
         let optionsDip = `<option value="">- Non Assegnato -</option>`;
         listaDipendenti.forEach(dip => {
           let selected = (r.assegnato_a === dip.nome) ? "selected" : "";
@@ -729,9 +703,12 @@
           return `<td class="p-1 border-r text-center"><input type="number" min="0" value="${val}" data-tess="${r.numero_tessera}" data-mese="${mKey}" class="w-10 text-center border-none focus:ring-1 focus:ring-red-400 text-xs font-semibold"></td>`;
         }).join('');
 
-        tbody.innerHTML += `<tr class="border-b hover:bg-slate-50/50"><td class="p-2 border-r font-medium text-slate-700">${r.numero_tessera}</td><td class="p-2 border-r">${selectDipHtml}</td>${mCells}</tr>`;
+        tbody.innerHTML += `<tr class="border-b hover:bg-slate-50/50"><td class="p-2.5 border-r font-medium text-slate-700">${r.numero_tessera}</td><td class="p-2.5 border-r">${selectDipHtml}</td>${mCells}</tr>`;
       });
 
+      // AGGIORNAMENTO RECAP FISCALE IN FONDO ALLA PAGINA
+      document.getElementById('labelTotTicket').textContent = `Totale Ticket Caricati (${anno})`;
+      document.getElementById('labelTotValore').textContent = `Valore Economico Totale (${anno})`;
       document.getElementById('totTicketMatrice').textContent = tot + " ticket";
       document.getElementById('totValoreMatrice').textContent = "€ " + (tot * 5.20).toFixed(2).replace('.', ',');
     }
@@ -740,7 +717,6 @@
       const anno = parseInt(document.getElementById('matriceAnno').value);
       let mat = getDB("db_matrice");
 
-      // Lettura valori select e input
       document.querySelectorAll('#matriceTbody select, #matriceTbody input').forEach(el => {
         let tess = el.getAttribute('data-tess');
         let mese = el.getAttribute('data-mese');
@@ -774,68 +750,7 @@
       }
     }
 
-    let tempPresenze = [];
-    function elaboraLibroPresenze() {
-      let fileInput = document.getElementById('presFile');
-      if(!fileInput.files[0]) { alert('Seleziona un file!'); return; }
-      let mese = document.getElementById('presMese').value;
-      let anno = document.getElementById('presAnno').value;
-      let anag = getDB("db_anagrafica").filter(a => a.diritto);
-
-      let reader = new FileReader();
-      reader.onload = function(e) {
-        let wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
-        let json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
-        let tbody = document.getElementById('presenzeResultTbody');
-        tbody.innerHTML = "";
-        tempPresenze = [];
-
-        anag.forEach(a => {
-          let cnt = 0;
-          let trovato = false;
-          json.forEach(row => {
-            let s = row.join(" ").toLowerCase();
-            if(s.includes(a.nome.toLowerCase())) trovato = true;
-            if(trovato && (s.includes("preord") || s.includes("smartw"))) {
-              let v = parseInt(row[42]); if(!isNaN(v)) cnt += v;
-            }
-          });
-          tempPresenze.push({ nome: a.nome, count: cnt, mese: mese, anno: anno });
-          tbody.innerHTML += `<tr class="border-b"><td class="p-2 font-medium">${a.nome}</td><td class="p-2">${trovato ? '✅ SI' : '❌ NO'}</td><td class="p-2 font-bold">${cnt}</td><td class="p-2 text-emerald-700">€ ${(cnt*5.2).toFixed(2)}</td></tr>`;
-        });
-
-        let st = getDB("db_storico_presenze");
-        st.push({ id: Date.now(), mese: mese, anno: anno, file_name: fileInput.files[0].name });
-        setDB("db_storico_presenze", st);
-        renderStoricoPresenze();
-        document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
-      };
-      reader.readAsArrayBuffer(fileInput.files[0]);
-    }
-
-    function popolaMatriceDaPresenze() {
-      if(tempPresenze.length === 0) return;
-      let mat = getDB("db_matrice");
-      tempPresenze.forEach(item => {
-        let row = mat.find(m => m.assegnato_a.toLowerCase().includes(item.nome.toLowerCase()) && m.anno === parseInt(item.anno));
-        if(row) row[item.mese.toLowerCase()] = item.count;
-      });
-      setDB("db_matrice", mat);
-      alert('✅ Matrice tessere popolata con i dati del Libro Presenze!');
-      renderMatrice();
-    }
-
-    function renderStoricoPresenze() {
-      const container = document.getElementById('storicoPresenzeList');
-      const st = getDB("db_storico_presenze");
-      container.innerHTML = st.map(s => `
-        <div class="flex justify-between items-center bg-slate-50 p-2 rounded border">
-          <span>📁 <b>${s.mese.toUpperCase()} ${s.anno}</b> — ${s.file_name}</span>
-          <span class="text-xs text-slate-400">Archiviato</span>
-        </div>
-      `).join('') || '<p class="text-slate-400">Nessun file archiviato nello storico.</p>';
-    }
-
+    // RENDER TABELLA ANAGRAFICA CON NUMERAZIONE PARTENTE DA 1
     function renderAnagrafica() {
       const tbody = document.getElementById('anagraficaTbody');
       const select = document.getElementById('selectDipendenteRimuovere');
@@ -853,7 +768,7 @@
       list.forEach((dip, idx) => {
         tbody.innerHTML += `
           <tr class="hover:bg-slate-50/60">
-            <td class="p-2.5 border-r text-center text-slate-400 font-medium">${idx + 11}</td>
+            <td class="p-2.5 border-r text-center text-slate-400 font-medium">${idx + 1}</td>
             <td class="p-2.5 border-r font-semibold text-slate-800">${dip.nome}</td>
             <td class="p-2.5 border-r text-center">
               <input type="checkbox" ${dip.diritto ? 'checked' : ''} disabled class="w-4 h-4 accent-slate-500 rounded cursor-default">
@@ -899,12 +814,10 @@
 
     function renderHRMagazzino() {
       const ordiniTbody = document.getElementById('ordiniTbody');
-      const erogatiTbody = document.getElementById('erogatiTbody');
       const ordini = getDB("db_ordini");
       const reqs = getDB("db_richieste").filter(r => r.stato === 'Pronti');
 
       ordiniTbody.innerHTML = "";
-      erogatiTbody.innerHTML = "";
 
       ordini.forEach(o => {
         let erogatiRichieste = reqs.filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + r.num_ticket, 0);
@@ -923,47 +836,11 @@
           </tr>
         `;
       });
-
-      reqs.forEach(r => {
-        erogatiTbody.innerHTML += `
-          <tr class="hover:bg-slate-50/60">
-            <td class="p-2.5 font-medium">${r.nome_cognome}</td>
-            <td class="p-2.5">${r.email}</td>
-            <td class="p-2.5">${r.mese} ${r.anno}</td>
-            <td class="p-2.5 font-bold">${r.num_ticket}</td>
-            <td class="p-2.5 text-indigo-600 font-semibold">${r.ordine_fattura}</td>
-          </tr>
-        `;
-      });
-    }
-
-    function handleOrderSubmit(e) {
-      e.preventDefault();
-      let ordini = getDB("db_ordini");
-      ordini.push({
-        id: Date.now(),
-        fattura: document.getElementById('ordFattura').value,
-        valore: document.getElementById('valoreTicket').value,
-        acquistati: parseInt(document.getElementById('quantitaAcquistati').value),
-        erogati_iniziali: parseInt(document.getElementById('erogatiIniziali').value),
-        residuo_precedente: parseInt(document.getElementById('residuoPrecedente').value)
-      });
-      setDB("db_ordini", ordini);
-      alert('✅ Ordine salvato!');
-      e.target.reset();
-      renderHRMagazzino();
-    }
-
-    function eliminaOrdine(id) {
-      if(confirm('Confermi eliminazione ordine?')) {
-        let ordini = getDB("db_ordini").filter(o => o.id !== id);
-        setDB("db_ordini", ordini);
-        renderHRMagazzino();
-      }
     }
 
     window.onload = function() {
       popolaAnniSelect();
+      renderAnagrafica();
     };
   </script>
 </body>

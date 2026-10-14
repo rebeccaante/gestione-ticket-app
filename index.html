@@ -36,11 +36,11 @@
 
       <div class="space-y-3">
         <label class="flex items-center gap-3 cursor-pointer">
-          <input type="radio" name="section" value="richiesta" checked onchange="switchSection('richiesta')" class="w-4 h-4 accent-red-500">
+          <input type="radio" name="section" value="richiesta" onchange="switchSection('richiesta')" class="w-4 h-4 accent-red-500">
           <span class="text-sm text-slate-700">Nuova Richiesta</span>
         </label>
         <label class="flex items-center gap-3 cursor-pointer">
-          <input type="radio" name="section" value="gestione" onchange="switchSection('gestione')" class="w-4 h-4 accent-red-500">
+          <input type="radio" name="section" value="gestione" checked onchange="switchSection('gestione')" class="w-4 h-4 accent-red-500">
           <span class="text-sm text-slate-700">HR - Gestione Richieste</span>
         </label>
         <label class="flex items-center gap-3 cursor-pointer">
@@ -51,12 +51,12 @@
     </div>
 
     <!-- Area Riservata HR -->
-    <div id="hrAuthBox" class="pt-6 border-t border-slate-300/70 hidden">
+    <div id="hrAuthBox" class="pt-6 border-t border-slate-300/70">
       <div class="flex items-center gap-2 mb-3">
         <span class="text-base">🔒</span>
         <h3 class="text-base font-bold text-slate-800">Area Riservata HR</h3>
       </div>
-      <p class="text-xs text-slate-600 mb-2 font-medium">Inserisci Password HR:</p>
+      <p class="text-xs text-slate-600 mb-2">Inserisci Password HR:</p>
       <div class="relative">
         <input type="password" id="hrPasswordInput" oninput="checkPassword()" placeholder="••••••••••••" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm pr-9 focus:outline-none focus:border-slate-400">
         <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">👁️</button>
@@ -72,7 +72,7 @@
     </div>
 
     <!-- SEZIONE 1: NUOVA RICHIESTA -->
-    <section id="section-richiesta" class="block max-w-5xl">
+    <section id="section-richiesta" class="hidden max-w-5xl">
       <div class="flex items-center gap-3 mb-2">
         <span class="text-3xl">🎟️</span>
         <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Richiesta</h1>
@@ -92,10 +92,7 @@
               <label class="block text-xs font-semibold text-slate-700 mb-2">Mese *</label>
               <div class="stInput px-4 py-2.5">
                 <select id="reqMese" required class="w-full bg-transparent border-none focus:outline-none text-sm appearance-none">
-                  <option value="Gennaio">Gennaio</option><option value="Febbraio">Febbraio</option><option value="Marzo">Marzo</option>
-                  <option value="Aprile">Aprile</option><option value="Maggio">Maggio</option><option value="Giugno">Giugno</option>
-                  <option value="Luglio">Luglio</option><option value="Agosto">Agosto</option><option value="Settembre">Settembre</option>
-                  <option value="Ottobre">Ottobre</option><option value="Novembre">Novembre</option><option value="Dicembre">Dicembre</option>
+                  <!-- Popolato dinamicamente da JS -->
                 </select>
               </div>
             </div>
@@ -118,8 +115,8 @@
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-2">Anno *</label>
               <div class="stInput px-4 py-2.5">
-                <select id="reqAnno" required class="w-full bg-transparent border-none focus:outline-none text-sm appearance-none">
-                  <option value="2026">2026</option><option value="2027">2027</option>
+                <select id="reqAnno" required onchange="aggiornaMesiFormRichiesta()" class="w-full bg-transparent border-none focus:outline-none text-sm appearance-none">
+                  <!-- Popolato dinamicamente da JS (2026 -> 2060) -->
                 </select>
               </div>
             </div>
@@ -144,12 +141,12 @@
     </section>
 
     <!-- SEZIONE 2: HR GESTIONE RICHIESTE -->
-    <section id="section-gestione" class="hidden max-w-5xl">
-      <div id="gestioneLocked" class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4">
+    <section id="section-gestione" class="block max-w-5xl">
+      <div id="gestioneLocked" class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4 hidden">
         🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.
       </div>
 
-      <div id="gestioneUnlocked" class="hidden space-y-6">
+      <div id="gestioneUnlocked" class="space-y-6">
         <div class="flex items-center gap-3 mb-2">
           <span class="text-3xl">📋</span>
           <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Dashboard Gestione Richieste (HR)</h1>
@@ -157,12 +154,12 @@
 
         <!-- MAIN TABS -->
         <div class="flex gap-8 border-b border-slate-200 text-xs font-medium pb-2">
-          <button id="mainTab1Btn" onclick="switchMainTab('tab1')" class="tab-active pb-2 flex items-center gap-2"><span>📋</span> Richieste Moduli Cartacei/PDF</button>
-          <button id="mainTab2Btn" onclick="switchMainTab('tab2')" class="text-slate-500 hover:text-slate-800 pb-2 flex items-center gap-2"><span>💳</span> Ticket Digitali (Tessere)</button>
+          <button id="mainTab1Btn" onclick="switchMainTab('tab1')" class="text-slate-500 pb-2 flex items-center gap-2"><span>📋</span> Richieste Moduli Cartacei/PDF</button>
+          <button id="mainTab2Btn" onclick="switchMainTab('tab2')" class="tab-active pb-2 flex items-center gap-2"><span>💳</span> Ticket Digitali (Tessere)</button>
         </div>
 
         <!-- MAIN TAB 1: CARTACEI -->
-        <div id="mainTab1" class="space-y-4">
+        <div id="mainTab1" class="hidden space-y-4">
           <div class="flex items-center gap-4 text-xs font-medium">
             <span>Filtra per Stato:</span>
             <label class="flex items-center gap-1"><input type="radio" name="filtroStato" value="Tutti" checked onchange="renderRichiesteHR()"> Tutti</label>
@@ -173,7 +170,7 @@
         </div>
 
         <!-- MAIN TAB 2: TICKET DIGITALI -->
-        <div id="mainTab2" class="hidden space-y-6">
+        <div id="mainTab2" class="space-y-6">
           <div class="flex items-center gap-2">
             <span class="text-xl">💳</span>
             <h2 class="text-xl font-bold text-slate-800">Tracciamento Tessere Digitali & Calcolo Presenze</h2>
@@ -186,41 +183,62 @@
             <button id="subTabCBtn" onclick="switchSubTab('subC')" class="text-slate-500 pb-2 flex items-center gap-1"><span>👥</span> Anagrafica Nominativi con Diritto</button>
           </div>
 
-          <!-- SUB A: MATRICE -->
+          <!-- SUB A: MATRICE TESSERE DIGITALI -->
           <div id="subTabA" class="space-y-4">
             <div class="flex justify-between items-center">
               <div class="flex items-center gap-2 text-xs">
-                <label class="font-semibold">Anno:</label>
-                <select id="matriceAnno" onchange="renderMatrice()" class="stInput px-2 py-1"><option value="2026">2026</option><option value="2027">2027</option></select>
+                <label class="font-semibold">Seleziona Anno di Riferimento:</label>
+                <select id="matriceAnno" onchange="renderMatrice()" class="stInput px-3 py-1 font-semibold">
+                  <!-- Popolato dinamicamente da JS (2026 -> 2060) -->
+                </select>
               </div>
-              <button onclick="addNuovaTesseraPrompt()" class="stBtn px-3 py-1 text-xs">➕ Aggiungi Nuova Tessera</button>
+              <button onclick="addNuovaTesseraPrompt()" class="stBtn px-3 py-1 text-xs font-medium">➕ Aggiungi Nuova Tessera Digital</button>
             </div>
+
             <div class="overflow-x-auto border rounded-lg">
               <table class="w-full text-xs text-left border-collapse">
-                <thead class="bg-slate-50 border-b">
-                  <tr><th class="p-2 border-r">N° Tessera</th><th class="p-2 border-r">Assegnato Momentaneamente a</th><th class="p-2 text-center border-r">Gen</th><th class="p-2 text-center border-r">Feb</th><th class="p-2 text-center border-r">Mar</th><th class="p-2 text-center border-r">Apr</th><th class="p-2 text-center border-r">Mag</th><th class="p-2 text-center border-r">Giu</th><th class="p-2 text-center border-r">Lug</th><th class="p-2 text-center border-r">Ago</th><th class="p-2 text-center border-r">Set</th><th class="p-2 text-center border-r">Ott</th><th class="p-2 text-center border-r">Nov</th><th class="p-2 text-center">Dic</th></tr>
+                <thead class="bg-slate-50 border-b text-slate-700">
+                  <tr id="matriceTheadRow">
+                    <!-- Popolato dinamicamente a seconda dell'anno (solo ott-dic per 2026, gen-dic per >2026) -->
+                  </tr>
                 </thead>
-                <tbody id="matriceTbody"></tbody>
+                <tbody id="matriceTbody">
+                  <!-- Popolato dinamicamente da JS -->
+                </tbody>
               </table>
             </div>
+
             <div class="flex justify-between items-center pt-2 text-xs font-semibold">
-              <button onclick="salvaMatriceTessere()" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">💾 Salva Modifiche Tabella Tessere</button>
-              <div>Totale Ticket Caricati: <span id="totTicketMatrice" class="text-red-500 font-bold">0</span> | Valore Totale: <span id="totValoreMatrice" class="text-emerald-600 font-bold">€ 0,00</span></div>
+              <button onclick="salvaMatriceTessere()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md shadow-sm">💾 Salva Modifiche Tabella Tessere</button>
+              <div class="flex gap-6 text-xs">
+                <div>Totale Ticket Caricati: <span id="totTicketMatrice" class="text-red-500 font-bold">0 ticket</span></div>
+                <div>Valore Economico Totale: <span id="totValoreMatrice" class="text-emerald-600 font-bold">€ 0,00</span></div>
+              </div>
             </div>
           </div>
 
           <!-- SUB B: PRESENZE -->
           <div id="subTabB" class="hidden space-y-4">
             <div class="stCard p-6 space-y-4">
-              <h4 class="font-bold text-xs">📄 Upload Nuovo Libro Presenze Mensile (Colonna AQ)</h4>
+              <h4 class="font-bold text-xs text-slate-800">📄 Upload Nuovo Libro Presenze Mensile (Colonna AQ)</h4>
               <p class="text-xs text-slate-500">Vengono letti i valori per le causali <b>PREORD</b> e <b>SMARTW</b> dai dipendenti abilitati nell'anagrafica.</p>
               <div class="grid grid-cols-3 gap-4">
-                <select id="presMese" class="stInput p-2 text-xs">
-                  <option value="ottobre">Ottobre</option><option value="novembre">Novembre</option><option value="dicembre">Dicembre</option>
-                  <option value="gennaio">Gennaio</option><option value="febbraio">Febbraio</option><option value="marzo">Marzo</option>
-                </select>
-                <select id="presAnno" class="stInput p-2 text-xs"><option value="2026">2026</option><option value="2027">2027</option></select>
-                <input type="file" id="presFile" accept=".xlsx,.xls,.csv" class="text-xs">
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Mese Presenze:</label>
+                  <select id="presMese" class="stInput p-2 text-xs w-full">
+                    <!-- Popolato dinamicamente in base all'anno selezionato -->
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Anno Presenze:</label>
+                  <select id="presAnno" onchange="aggiornaMesiPresenze()" class="stInput p-2 text-xs w-full">
+                    <!-- Popolato dinamicamente (2026 -> 2060) -->
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold mb-1">Seleziona File (Excel/CSV):</label>
+                  <input type="file" id="presFile" accept=".xlsx,.xls,.csv" class="text-xs w-full">
+                </div>
               </div>
               <button onclick="elaboraLibroPresenze()" class="stBtn px-4 py-2 text-xs font-semibold">🧮 Calcola Spettanze dal File</button>
             </div>
@@ -237,7 +255,7 @@
             </div>
           </div>
 
-          <!-- SUB C: ANAGRAFICA NOMINATIVI CON DIRITTO (ESATTA DEGLI SCREENSHOT) -->
+          <!-- SUB C: ANAGRAFICA NOMINATIVI CON DIRITTO -->
           <div id="subTabC" class="hidden space-y-6">
             <div class="flex items-center gap-2">
               <span class="text-xl">👥</span>
@@ -278,7 +296,7 @@
               </form>
             </div>
 
-            <!-- TABELLA LISTA DIPENDENTI REGISTRATI (ESATTA DEGLI SCREENSHOT) -->
+            <!-- TABELLA LISTA DIPENDENTI REGISTRATI -->
             <div class="space-y-3">
               <h3 class="text-lg font-bold text-slate-800">Lista Dipendenti Registrati</h3>
               
@@ -299,7 +317,7 @@
               </div>
             </div>
 
-            <!-- ACCORDION RIMUOVI DIPENDENTE (ESATTO DEGLI SCREENSHOT) -->
+            <!-- ACCORDION RIMUOVI DIPENDENTE -->
             <div class="stCard overflow-hidden">
               <div class="bg-slate-50/80 px-4 py-2.5 border-b border-slate-200 text-xs text-slate-700 flex items-center gap-2 font-medium">
                 <span>⌄</span>
@@ -430,6 +448,10 @@
     const PASSWORD_HR = "pallinerosa26!";
     let isHrAuthenticated = false;
 
+    // COSTANTI MESI
+    const MESI_2026 = ["Ottobre", "Novembre", "Dicembre"];
+    const MESI_TUTTI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+
     const dipendentiDefault = [
       { nome: "DI VITO DANIELA", diritto: true, note: "" },
       { nome: "GISOTTI EDUARDO", diritto: true, note: "" },
@@ -450,13 +472,17 @@
       if(!localStorage.getItem("db_ordini")) localStorage.setItem("db_ordini", JSON.stringify([]));
       if(!localStorage.getItem("db_storico_presenze")) localStorage.setItem("db_storico_presenze", JSON.stringify([]));
       if(!localStorage.getItem("db_anagrafica")) localStorage.setItem("db_anagrafica", JSON.stringify(dipendentiDefault));
+      
       if(!localStorage.getItem("db_matrice")) {
         let mat = [];
-        for(let i=1; i<=30; i++) {
-          let num = "008000" + (i < 10 ? "0" + i : i);
-          let row = { numero_tessera: num, assegnato_a: "", anno: 2026 };
-          ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"].forEach(m => row[m] = 0);
-          mat.push(row);
+        for(let a=2026; a<=2060; a++) {
+          let mesiAnno = (a === 2026) ? MESI_2026 : MESI_TUTTI;
+          for(let i=1; i<=30; i++) {
+            let num = "008000" + (i < 10 ? "0" + i : i);
+            let row = { numero_tessera: num, assegnato_a: "", anno: a };
+            mesiAnno.forEach(m => row[m.toLowerCase()] = 0);
+            mat.push(row);
+          }
         }
         localStorage.setItem("db_matrice", JSON.stringify(mat));
       }
@@ -465,6 +491,41 @@
 
     function getDB(k) { return JSON.parse(localStorage.getItem(k) || "[]"); }
     function setDB(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+
+    // POPOLAMENTO SELECT ANNI (2026 -> 2060)
+    function popolaAnniSelect() {
+      const selectAnnoMatrice = document.getElementById('matriceAnno');
+      const selectAnnoRichiesta = document.getElementById('reqAnno');
+      const selectAnnoPresenze = document.getElementById('presAnno');
+
+      let htmlAnni = "";
+      for(let y=2026; y<=2060; y++) {
+        htmlAnni += `<option value="${y}">${y}</option>`;
+      }
+
+      if(selectAnnoMatrice) selectAnnoMatrice.innerHTML = htmlAnni;
+      if(selectAnnoRichiesta) selectAnnoRichiesta.innerHTML = htmlAnni;
+      if(selectAnnoPresenze) selectAnnoPresenze.innerHTML = htmlAnni;
+
+      aggiornaMesiFormRichiesta();
+      aggiornaMesiPresenze();
+    }
+
+    function aggiornaMesiFormRichiesta() {
+      const anno = parseInt(document.getElementById('reqAnno').value);
+      const selectMese = document.getElementById('reqMese');
+      const listaMesi = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
+
+      selectMese.innerHTML = listaMesi.map(m => `<option value="${m}">${m}</option>`).join('');
+    }
+
+    function aggiornaMesiPresenze() {
+      const anno = parseInt(document.getElementById('presAnno').value);
+      const selectMese = document.getElementById('presMese');
+      const listaMesi = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
+
+      selectMese.innerHTML = listaMesi.map(m => `<option value="${m.toLowerCase()}">${m}</option>`).join('');
+    }
 
     function switchSection(sectionId) {
       document.getElementById('hrAuthBox').classList.toggle('hidden', sectionId === 'richiesta');
@@ -566,6 +627,7 @@
       document.getElementById('subTabA').classList.toggle('hidden', s !== 'subA');
       document.getElementById('subTabB').classList.toggle('hidden', s !== 'subB');
       document.getElementById('subTabC').classList.toggle('hidden', s !== 'subC');
+      if(s === 'subA') renderMatrice();
       if(s === 'subC') renderAnagrafica();
     }
 
@@ -630,20 +692,46 @@
       }
     }
 
+    // RENDER MATRICE TESSERE CON MENU A TENDINA PER ANAGRAFICA E MESI DINAMICI (2026 = OTT-DIC, >2026 = GEN-DIC)
     function renderMatrice() {
       const tbody = document.getElementById('matriceTbody');
+      const theadRow = document.getElementById('matriceTheadRow');
       const anno = parseInt(document.getElementById('matriceAnno').value);
+      const listaDipendenti = getDB("db_anagrafica");
       const mat = getDB("db_matrice").filter(m => m.anno === anno);
+
+      const listaMesiTabella = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
+
+      // Generazione Header Tabella
+      let htmlHead = `<th class="p-2 border-r">N° Tessera</th><th class="p-2 border-r min-w-[200px]">Assegnato Momentaneamente a</th>`;
+      listaMesiTabella.forEach(m => {
+        htmlHead += `<th class="p-2 text-center border-r">${m.substring(0,3)}</th>`;
+      });
+      theadRow.innerHTML = htmlHead;
+
       tbody.innerHTML = "";
       let tot = 0;
+
       mat.forEach(r => {
-        let mCells = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"].map(m => {
-          let val = r[m] || 0;
+        // Opzioni Menu a Tendina Dipendenti dall'Anagrafica
+        let optionsDip = `<option value="">- Non Assegnato -</option>`;
+        listaDipendenti.forEach(dip => {
+          let selected = (r.assegnato_a === dip.nome) ? "selected" : "";
+          optionsDip += `<option value="${dip.nome}" ${selected}>${dip.nome}</option>`;
+        });
+
+        let selectDipHtml = `<select data-tess="${r.numero_tessera}" data-field="assegnato_a" class="stInput px-2 py-1 w-full text-xs font-semibold text-slate-800 bg-transparent">${optionsDip}</select>`;
+
+        let mCells = listaMesiTabella.map(m => {
+          let mKey = m.toLowerCase();
+          let val = r[mKey] || 0;
           tot += val;
-          return `<td class="p-1 border-r text-center"><input type="number" min="0" value="${val}" data-tess="${r.numero_tessera}" data-mese="${m}" class="w-10 text-center border-none focus:ring-1 focus:ring-red-400 text-xs"></td>`;
+          return `<td class="p-1 border-r text-center"><input type="number" min="0" value="${val}" data-tess="${r.numero_tessera}" data-mese="${mKey}" class="w-10 text-center border-none focus:ring-1 focus:ring-red-400 text-xs font-semibold"></td>`;
         }).join('');
-        tbody.innerHTML += `<tr class="border-b"><td class="p-2 border-r font-medium">${r.numero_tessera}</td><td class="p-2 border-r"><input type="text" value="${r.assegnato_a||''}" data-tess="${r.numero_tessera}" data-field="assegnato_a" class="stInput px-2 py-1 w-full text-xs"></td>${mCells}</tr>`;
+
+        tbody.innerHTML += `<tr class="border-b hover:bg-slate-50/50"><td class="p-2 border-r font-medium text-slate-700">${r.numero_tessera}</td><td class="p-2 border-r">${selectDipHtml}</td>${mCells}</tr>`;
       });
+
       document.getElementById('totTicketMatrice').textContent = tot + " ticket";
       document.getElementById('totValoreMatrice').textContent = "€ " + (tot * 5.20).toFixed(2).replace('.', ',');
     }
@@ -651,18 +739,22 @@
     function salvaMatriceTessere() {
       const anno = parseInt(document.getElementById('matriceAnno').value);
       let mat = getDB("db_matrice");
-      document.querySelectorAll('#matriceTbody input').forEach(input => {
-        let tess = input.getAttribute('data-tess');
-        let mese = input.getAttribute('data-mese');
-        let field = input.getAttribute('data-field');
+
+      // Lettura valori select e input
+      document.querySelectorAll('#matriceTbody select, #matriceTbody input').forEach(el => {
+        let tess = el.getAttribute('data-tess');
+        let mese = el.getAttribute('data-mese');
+        let field = el.getAttribute('data-field');
+
         let row = mat.find(m => m.numero_tessera === tess && m.anno === anno);
         if(row) {
-          if(mese) row[mese] = parseInt(input.value) || 0;
-          if(field) row[field] = input.value;
+          if(mese) row[mese] = parseInt(el.value) || 0;
+          if(field) row[field] = el.value;
         }
       });
+
       setDB("db_matrice", mat);
-      alert('✅ Matrice tessere salvata!');
+      alert('✅ Matrice tessere salvata con successo!');
       renderMatrice();
     }
 
@@ -671,8 +763,11 @@
       if(num) {
         let mat = getDB("db_matrice");
         let anno = parseInt(document.getElementById('matriceAnno').value);
+        let listaMesiTabella = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
+
         let r = { numero_tessera: num, assegnato_a: "", anno: anno };
-        ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"].forEach(m => r[m] = 0);
+        listaMesiTabella.forEach(m => r[m.toLowerCase()] = 0);
+
         mat.push(r);
         setDB("db_matrice", mat);
         renderMatrice();
@@ -784,6 +879,7 @@
       document.getElementById('anagNome').value = "";
       document.getElementById('anagNote').value = "";
       renderAnagrafica();
+      renderMatrice();
     }
 
     function confermaRimuoviDipendente() {
@@ -798,6 +894,7 @@
 
       alert(`✅ Dipendente "${nomeRimosso}" rimosso con successo dall'anagrafica!`);
       renderAnagrafica();
+      renderMatrice();
     }
 
     function renderHRMagazzino() {
@@ -864,6 +961,10 @@
         renderHRMagazzino();
       }
     }
+
+    window.onload = function() {
+      popolaAnniSelect();
+    };
   </script>
 </body>
 </html>

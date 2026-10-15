@@ -237,7 +237,7 @@
                   <input type="file" id="presFile" accept=".xlsx,.xls,.csv" class="text-xs w-full">
                 </div>
               </div>
-              <button onclick="elaboraLibroPresenze()" class="stBtn px-4 py-2 text-xs font-semibold">🧮 Calcola Spettanze dal File</button>
+              <button onclick="elaboraLibroPresenze()" class="stBtn px-4 py-2 text-xs font-semibold">🧮 Calcola Ticket</button>
             </div>
 
             <div id="risultatiPresenzeBox" class="hidden stCard p-6 space-y-4 w-full">
@@ -424,6 +424,7 @@
   <script>
     const PASSWORD_HR = "pallinerosa26!";
     let isHrAuthenticated = true;
+    let ultimiRisultatiCalcoloPresenze = [];
 
     const MESI_2026 = ["Ottobre", "Novembre", "Dicembre"];
     const MESI_TUTTI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
@@ -630,17 +631,46 @@
               <a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>
               ${!isPronto ? `
                 <div class="flex items-center gap-2">
-                  <select id="selOrd_\${r.id}" class="stInput px-2 py-1 text-xs">\${ordOpts || '<option>Nessun Ordine</option>'}</select>
+                  <select id="selOrd_\${r.id}" class="stInput px-2 py-1 text-xs">\${ordOpts || '<option value="">Nessun Ordine</option>'}</select>
                   <button onclick="segnaPronto(\${r.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1 rounded text-xs">Segna come PRONTI 🚀</button>
                 </div>
-              ` : `<span class="text-xs text-emerald-700 font-semibold">Associato all'Ordine: \${r.ordine_fattura}</span>`}
+              ` : `<span class="text-xs text-emerald-700 font-semibold">Associato all'Ordine: \${r.ordine_fattura || 'N/A'}</span>`}
             </div>
           </div>
         `;
       });
     }
 
-    // CARICAMENTO CON ALLINEAMENTO DINAMICO DEI NOMI DAI DATI STORICI
+    function eliminaRichiesta(id) {
+      if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {
+        let reqs = getDB("db_richieste").filter(r => r.id !== id);
+        setDB("db_richieste", reqs);
+        renderRichiesteHR();
+        renderHRMagazzino();
+      }
+    }
+
+    function segnaPronto(id) {
+      let sel = document.getElementById('selOrd_' + id);
+      let ordineFattura = sel ? sel.value : null;
+
+      if(!ordineFattura) {
+        alert("⚠️ Seleziona prima una fattura/ordine da associare!");
+        return;
+      }
+
+      let reqs = getDB("db_richieste");
+      let req = reqs.find(r => r.id === id);
+      if(req) {
+        req.stato = "Pronti";
+        req.ordine_fattura = ordineFattura;
+        setDB("db_richieste", reqs);
+        alert("✅ Richiesta segnata come PRONTI e associata all'ordine " + ordineFattura);
+        renderRichiesteHR();
+        renderHRMagazzino();
+      }
+    }
+
     function renderMatrice() {
       const tbody = document.getElementById('matriceTbody');
       const theadRow = document.getElementById('matriceTheadRow');
@@ -648,7 +678,6 @@
       const listaDipendenti = getDB("db_anagrafica");
       let mat = getDB("db_matrice");
 
-      // Ricava l'assegnazione più recente da un anno precedente (es. 2026) per ogni tessera
       function getUltimoAssegnatarioValid(numTessera, targetAnno) {
         for (let a = targetAnno - 1; a >= 2026; a--) {
           let row = mat.find(m => m.numero_tessera === numTessera && m.anno === a);
@@ -657,11 +686,8 @@
         return "";
       }
 
-      // Se l'anno attuale non ha righe o ha righe con assegnatari non compilati, li eredita al volo dall'anno prima
       let matAnno = mat.filter(m => m.anno === anno);
       let mesiAnno = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
-
-      // Recupera la lista unica di tessere presenti nel sistema
       let tessereUniche = Array.from(new Set(mat.map(m => m.numero_tessera)));
 
       tessereUniche.forEach(numTess => {
@@ -716,7 +742,6 @@
       document.getElementById('totValoreMatrice').textContent = "€ " + (tot * 5.20).toFixed(2).replace('.', ',');
     }
 
-    // SALVATAGGIO CON PROPAGAZIONE ESCLUSIVA PER GLI ANNI FUTURI (ANNO >= ANNO SELEZIONATO)
     function salvaMatriceTessere() {
       const annoCorrente = parseInt(document.getElementById('matriceAnno').value);
       let mat = getDB("db_matrice");
@@ -732,7 +757,6 @@
           if(field) {
             rowCorrente[field] = el.value;
 
-            // SOVRASCRIVE L'ASSEGNAZIONE SOLO PER GLI ANNI PARI O SUCCESSIVI A QUELLO SELEZIONATO (NON RETROATTIVO)
             for(let a = annoCorrente; a <= 2060; a++) {
               let rowAnnoFuturo = mat.find(m => m.numero_tessera === tess && m.anno === a);
               if(rowAnnoFuturo) {
@@ -773,6 +797,117 @@
         setDB("db_matrice", mat);
         renderMatrice();
       }
+    }
+
+    // CALCOLA TICKET DAL FILE PRESENZE
+    function elaboraLibroPresenze() {
+      const fileInput = document.getElementById('presFile');
+      if(!fileInput.files || !fileInput.files[0]) {
+        alert("⚠️ Seleziona un file Excel o CSV del Libro Presenze!");
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+          const anagrafica = getDB("db_anagrafica");
+          const dipendentiAbilitati = anagrafica.filter(d => d.diritto).map(d => d.nome.toUpperCase());
+
+          let conteggio = {};
+          dipendentiAbilitati.forEach(nome => { conteggio[nome] = 0; });
+
+          json.forEach(row => {
+            if(row && row.length > 0) {
+              let rigaTesto = row.join(" ").toUpperCase();
+              dipendentiAbilitati.forEach(nome => {
+                if(rigaTesto.includes(nome)) {
+                  let occorrenze = (rigaTesto.match(/PREORD|SMARTW/g) || []).length;
+                  if(occorrenze > 0) {
+                    conteggio[nome] += occorrenze;
+                  }
+                }
+              });
+            }
+          });
+
+          ultimiRisultatiCalcoloPresenze = [];
+          const tbody = document.getElementById('presenzeResultTbody');
+          tbody.innerHTML = "";
+
+          Object.keys(conteggio).forEach(nome => {
+            let numT = conteggio[nome];
+            ultimiRisultatiCalcoloPresenze.push({ nome: nome, ticket: numT });
+            tbody.innerHTML += `
+              <tr class="border-b hover:bg-slate-50">
+                <td class="p-2 font-semibold text-slate-800">${nome}</td>
+                <td class="p-2 text-emerald-600 font-bold">${numT > 0 ? 'SÌ' : 'NO'}</td>
+                <td class="p-2 font-bold">${numT} ticket</td>
+                <td class="p-2">€ ${(numT * 5.20).toFixed(2).replace('.', ',')}</td>
+              </tr>
+            `;
+          });
+
+          document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
+          alert("✅ Calcolo completato con successo!");
+        } catch(err) {
+          alert("❌ Errore nella lettura del file. Assicurati che sia un file Excel o CSV valido.");
+          console.error(err);
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    function popolaMatriceDaPresenze() {
+      if(ultimiRisultatiCalcoloPresenze.length === 0) return;
+
+      const mese = document.getElementById('presMese').value;
+      const anno = parseInt(document.getElementById('presAnno').value);
+      let mat = getDB("db_matrice");
+
+      ultimiRisultatiCalcoloPresenze.forEach(res => {
+        let row = mat.find(m => m.assegnato_a === res.nome && m.anno === anno);
+        if(row) {
+          row[mese] = res.ticket;
+        }
+      });
+
+      setDB("db_matrice", mat);
+
+      let storico = getDB("db_storico_presenze");
+      storico.push({ id: Date.now(), mese: mese, anno: anno, data: new Date().toLocaleDateString('it-IT') });
+      setDB("db_storico_presenze", storico);
+
+      alert(`⚡ Matrice tessere popolata con successo per il mese di ${mese.toUpperCase()} ${anno}!`);
+      renderStoricoPresenze();
+      renderMatrice();
+    }
+
+    function renderStoricoPresenze() {
+      const container = document.getElementById('storicoPresenzeList');
+      const storico = getDB("db_storico_presenze");
+      container.innerHTML = "";
+
+      if(storico.length === 0) {
+        container.innerHTML = `<span class="text-slate-400">Nessun file presenze elaborato.</span>`;
+        return;
+      }
+
+      storico.forEach(s => {
+        container.innerHTML += `
+          <div class="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-200">
+            <span>📅 Mese Presenze: <b>${s.mese.toUpperCase()} ${s.anno}</b> (Elaborato il ${s.data})</span>
+            <span class="text-emerald-600 font-bold">✓ Applicato in Matrice</span>
+          </div>
+        `;
+      });
     }
 
     function renderAnagrafica() {
@@ -836,12 +971,51 @@
       renderMatrice();
     }
 
+    // MAGAZZINO & SALVA ORDINE
+    function handleOrderSubmit(e) {
+      e.preventDefault();
+      let ordini = getDB("db_ordini");
+
+      let nuovoOrdine = {
+        id: Date.now(),
+        fattura: document.getElementById('ordFattura').value.trim(),
+        erogati_iniziali: parseInt(document.getElementById('erogatiIniziali').value) || 0,
+        valore: document.getElementById('valoreTicket').value,
+        residuo_precedente: parseInt(document.getElementById('residuoPrecedente').value) || 0,
+        acquistati: parseInt(document.getElementById('quantitaAcquistati').value) || 0
+      };
+
+      ordini.push(nuovoOrdine);
+      setDB("db_ordini", ordini);
+
+      alert("✅ Nuovo Ordine/Fattura salvato con successo!");
+      e.target.reset();
+      document.getElementById('valoreTicket').value = "5,20";
+      document.getElementById('quantitaAcquistati').value = "2000";
+
+      renderHRMagazzino();
+    }
+
+    function eliminaOrdine(id) {
+      if(confirm("Sei sicuro di voler eliminare questo ordine?")) {
+        let ordini = getDB("db_ordini").filter(o => o.id !== id);
+        setDB("db_ordini", ordini);
+        renderHRMagazzino();
+        renderRichiesteHR();
+      }
+    }
+
     function renderHRMagazzino() {
       const ordiniTbody = document.getElementById('ordiniTbody');
       const ordini = getDB("db_ordini");
       const reqs = getDB("db_richieste").filter(r => r.stato === 'Pronti');
 
       ordiniTbody.innerHTML = "";
+
+      if(ordini.length === 0) {
+        ordiniTbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">Nessun ordine registrato.</td></tr>`;
+        return;
+      }
 
       ordini.forEach(o => {
         let erogatiRichieste = reqs.filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + r.num_ticket, 0);

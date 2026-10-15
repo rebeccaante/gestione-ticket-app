@@ -50,7 +50,7 @@
       </div>
     </div>
 
-    <!-- Area Riservata HR -->
+    <!-- Area Riservata HR POSIZIONATA SUBITO SOTTO LE SEZIONI -->
     <div id="hrAuthBox" class="mt-6 pt-6 border-t border-slate-300/70">
       <div class="flex items-center gap-2 mb-3">
         <span class="text-base">🔒</span>
@@ -65,7 +65,7 @@
     </div>
   </aside>
 
-  <!-- CONTENUTO PRINCIPALE -->
+  <!-- CONTENUTO PRINCIPALE FULL WIDTH -->
   <main class="flex-1 p-10 overflow-x-auto w-full max-w-none">
     <div class="flex justify-end mb-4">
       <span class="text-slate-400 text-xl font-bold cursor-pointer hover:text-slate-600">⋮</span>
@@ -136,7 +136,7 @@
       </div>
     </section>
 
-    <!-- SEZIONE 2: HR GESTIONE RICHIESTE -->
+    <!-- SEZIONE 2: HR GESTIONE RICHIESTE FULL WIDTH -->
     <section id="section-gestione" class="block w-full">
       <div id="gestioneLocked" class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4 hidden">
         🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.
@@ -175,7 +175,7 @@
             <button id="subTabCBtn" onclick="switchSubTab('subC')" class="text-slate-500 pb-2 flex items-center gap-1"><span>👥</span> Anagrafica Nominativi con Diritto</button>
           </div>
 
-          <!-- SUB A: MATRICE TESSERE DIGITALI -->
+          <!-- SUB A: MATRICE TESSERE DIGITALI FULL WIDTH -->
           <div id="subTabA" class="space-y-4 w-full">
             <div class="flex justify-between items-center w-full">
               <div class="flex items-center gap-2 text-xs">
@@ -188,7 +188,7 @@
             </div>
 
             <div class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-3 flex items-center gap-2 font-medium">
-              <span>💡</span> Inserisci o modifica i dati nelle celle e salva. Tessere e assegnazioni si sincronizzano automaticamente su tutti gli anni.
+              <span>💡</span> Inserisci o modifica i dati nelle celle e salva. Salvando, le modifiche si propagano solo all'anno selezionato e a quelli futuri.
             </div>
 
             <div class="overflow-x-auto border rounded-lg w-full">
@@ -218,7 +218,7 @@
             </div>
           </div>
 
-          <!-- SUB B: PRESENZE -->
+          <!-- SUB B: PRESENZE FULL WIDTH -->
           <div id="subTabB" class="hidden space-y-4 w-full">
             <div class="stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs text-slate-800">📄 Upload Nuovo Libro Presenze Mensile (Colonna AQ)</h4>
@@ -252,7 +252,7 @@
             </div>
           </div>
 
-          <!-- SUB C: ANAGRAFICA -->
+          <!-- SUB C: ANAGRAFICA FULL WIDTH -->
           <div id="subTabC" class="hidden space-y-6 w-full">
             <div class="flex items-center gap-2">
               <span class="text-xl">👥</span>
@@ -451,19 +451,15 @@
       if(!localStorage.getItem("db_ordini")) localStorage.setItem("db_ordini", JSON.stringify([]));
       if(!localStorage.getItem("db_storico_presenze")) localStorage.setItem("db_storico_presenze", JSON.stringify([]));
       if(!localStorage.getItem("db_anagrafica")) localStorage.setItem("db_anagrafica", JSON.stringify(dipendentiDefault));
-      
-      // FORZA CREAZIONE E RIGENERAZIONE MATRICE MULTI-ANNO
+
       let mat = getDB("db_matrice");
-      if(!mat || mat.length === 0 || !mat.some(m => m.anno === 2027)) {
+      if(!mat || mat.length === 0) {
         mat = [];
-        for(let a=2026; a<=2060; a++) {
-          let mesiAnno = (a === 2026) ? MESI_2026 : MESI_TUTTI;
-          for(let i=1; i<=30; i++) {
-            let num = "008000" + (i < 10 ? "0" + i : i);
-            let row = { numero_tessera: num, assegnato_a: "", anno: a };
-            mesiAnno.forEach(m => row[m.toLowerCase()] = 0);
-            mat.push(row);
-          }
+        for(let i=1; i<=30; i++) {
+          let num = "008000" + (i < 10 ? "0" + i : i);
+          let row = { numero_tessera: num, assegnato_a: "", anno: 2026 };
+          MESI_2026.forEach(m => row[m.toLowerCase()] = 0);
+          mat.push(row);
         }
         setDB("db_matrice", mat);
       }
@@ -644,7 +640,7 @@
       });
     }
 
-    // RENDER MATRICE CON AUTO-PROPAGAZIONE E AUTO-CLONAZIONE TRA ANNI
+    // CLONAZIONE AUTOMATICA SOLO DA ANNO PRECEDENTE
     function renderMatrice() {
       const tbody = document.getElementById('matriceTbody');
       const theadRow = document.getElementById('matriceTheadRow');
@@ -652,18 +648,21 @@
       const listaDipendenti = getDB("db_anagrafica");
       let mat = getDB("db_matrice");
 
-      // SE L'ANNO SELEZIONATO NON HA DATI, COPIA LE TESSERE E LE ASSEGNAZIONI DALL'ANNO PRECEDENTE
       let matAnno = mat.filter(m => m.anno === anno);
-      if(matAnno.length === 0) {
+
+      // Se l'anno non ha ancora tessere, le eredita dall'anno immediatamente precedente (es: 2026 per il 2027)
+      if (matAnno.length === 0) {
         let matAnnoPrec = mat.filter(m => m.anno === (anno - 1));
-        if(matAnnoPrec.length === 0) matAnnoPrec = mat.filter(m => m.anno === 2026);
+        if (matAnnoPrec.length === 0) matAnnoPrec = mat.filter(m => m.anno === 2026);
 
         let mesiAnno = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
-        matAnnoPrec.forEach(prevRow => {
-          let newRow = { numero_tessera: prevRow.numero_tessera, assegnato_a: prevRow.assegnato_a, anno: anno };
+
+        matAnnoPrec.forEach(rowPrec => {
+          let newRow = { numero_tessera: rowPrec.numero_tessera, assegnato_a: rowPrec.assegnato_a, anno: anno };
           mesiAnno.forEach(m => newRow[m.toLowerCase()] = 0);
           mat.push(newRow);
         });
+
         setDB("db_matrice", mat);
         matAnno = mat.filter(m => m.anno === anno);
       }
@@ -704,7 +703,7 @@
       document.getElementById('totValoreMatrice').textContent = "€ " + (tot * 5.20).toFixed(2).replace('.', ',');
     }
 
-    // SALVATAGGIO REALE E GARANTITO PER TUTTI GLI ANNI DAL 2026 AL 2060
+    // SALVATAGGIO CON PROPAGAZIONE ESCLUSIVAMENTE PER GLI ANNI FUTURI (ANNO >= ANNO SELEZIONATO)
     function salvaMatriceTessere() {
       const annoCorrente = parseInt(document.getElementById('matriceAnno').value);
       let mat = getDB("db_matrice");
@@ -714,39 +713,33 @@
         let mese = el.getAttribute('data-mese');
         let field = el.getAttribute('data-field');
 
-        // Aggiorna l'anno corrente
         let rowCorrente = mat.find(m => m.numero_tessera === tess && m.anno === annoCorrente);
         if(rowCorrente) {
           if(mese) rowCorrente[mese] = parseInt(el.value) || 0;
           if(field) {
             rowCorrente[field] = el.value;
 
-            // Sincronizza l'assegnazione della tessera su TUTTI gli anni (2026 -> 2060)
-            for(let a = 2026; a <= 2060; a++) {
-              let rowAnno = mat.find(m => m.numero_tessera === tess && m.anno === a);
-              if(rowAnno) {
-                rowAnno[field] = el.value;
-              } else {
-                let mesiAnno = (a === 2026) ? MESI_2026 : MESI_TUTTI;
-                let newRow = { numero_tessera: tess, assegnato_a: el.value, anno: a };
-                mesiAnno.forEach(m => newRow[m.toLowerCase()] = 0);
-                mat.push(newRow);
-              }
-            }
+            // PROPAGA L'ASSEGNAZIONE SOLO DALL'ANNO CORRENTE IN POI (SENZA TOCCARE GLI ANNI PRECEDENTI)
+            mat.filter(m => m.numero_tessera === tess && m.anno >= annoCorrente).forEach(m => {
+              m[field] = el.value;
+            });
           }
         }
       });
 
       setDB("db_matrice", mat);
-      alert('✅ Modifiche salvate con successo! Le tessere e le assegnazioni sono ora sincronizzate per tutti gli anni.');
+      alert(`✅ Modifiche salvate con successo! Le assegnazioni sono state sincronizzate dal ${annoCorrente} agli anni successivi.`);
       renderMatrice();
     }
 
+    // AGGIUNTA NUOVA TESSERA SOLO DALL'ANNO CORRENTE IN POI
     function addNuovaTesseraPrompt() {
       let num = prompt("Inserisci Numero Nuova Tessera:");
       if(num) {
         let mat = getDB("db_matrice");
-        for(let a = 2026; a <= 2060; a++) {
+        let annoCorrente = parseInt(document.getElementById('matriceAnno').value);
+
+        for(let a = annoCorrente; a <= 2060; a++) {
           let listaMesiTabella = (a === 2026) ? MESI_2026 : MESI_TUTTI;
           let rowGiàPresente = mat.find(m => m.numero_tessera === num && m.anno === a);
 
@@ -756,6 +749,7 @@
             mat.push(r);
           }
         }
+
         setDB("db_matrice", mat);
         renderMatrice();
       }

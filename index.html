@@ -637,7 +637,7 @@
             <div class="flex items-center gap-4 pt-1">
               <a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>
               ${!isPronto ? `
-                <button type="button" onclick="segnaProntoInAutomatico(\${r.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1 rounded text-xs transition">Segna come PRONTI 🚀</button>
+                <button type="button" data-id="\${r.id}" class="btn-pronto-direct bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1 rounded text-xs transition">Segna come PRONTI 🚀</button>
               ` : `<span class="text-xs text-emerald-700 font-semibold">Associato all'Ordine: \${r.ordine_fattura || 'N/A'}</span>`}
             </div>
           </div>
@@ -645,30 +645,32 @@
       });
     }
 
-    // NUOVA LOGICA: Prende automaticamente l'ultimo ordine inserito in magazzino
-    function segnaProntoInAutomatico(id) {
-      const ordini = getDB("db_ordini");
+    // REGISTRAZIONE EVENTO DIRETTO SUL PULSANTE
+    document.addEventListener('click', function(e) {
+      if (e.target && e.target.classList.contains('btn-pronto-direct')) {
+        e.preventDefault();
+        const reqId = e.target.getAttribute('data-id');
+        const ordini = getDB("db_ordini");
 
-      if (ordini.length === 0) {
-        alert("⚠️ Nessun ordine registrato in Magazzino!\n\nPer favore aggiungi prima almeno un Ordine/Fattura nella sezione 'HR - Magazzino & Ordini'.");
-        return;
+        if (!ordini || ordini.length === 0) {
+          alert("⚠️ Nessun ordine in Magazzino!\n\nInserisci un ordine nella sezione 'HR - Magazzino & Ordini'.");
+          return;
+        }
+
+        const ultimoOrdine = ordini[ordini.length - 1];
+        let reqs = getDB("db_richieste");
+        let req = reqs.find(r => String(r.id) === String(reqId));
+
+        if (req) {
+          req.stato = "Pronti";
+          req.ordine_fattura = ultimoOrdine.fattura;
+          setDB("db_richieste", reqs);
+          alert(`✅ Richiesta di ${req.nome_cognome} segnata come PRONTI e associata all'ordine ${ultimoOrdine.fattura}!`);
+          renderRichiesteHR();
+          renderHRMagazzino();
+        }
       }
-
-      // Prende l'ultimo ordine inserito (il più recente)
-      const ultimoOrdine = ordini[ordini.length - 1];
-
-      let reqs = getDB("db_richieste");
-      let req = reqs.find(r => Number(r.id) === Number(id));
-
-      if (req) {
-        req.stato = "Pronti";
-        req.ordine_fattura = ultimoOrdine.fattura;
-        setDB("db_richieste", reqs);
-        alert(`✅ Richiesta di ${req.nome_cognome} segnata come PRONTI e scalata automaticamente dall'ultimo ordine (${ultimoOrdine.fattura})!`);
-        renderRichiesteHR();
-        renderHRMagazzino();
-      }
-    }
+    });
 
     function eliminaRichiesta(id) {
       if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {

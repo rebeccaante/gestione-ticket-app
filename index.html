@@ -563,7 +563,7 @@
       reader.onload = function(evt) {
         let reqs = getDB("db_richieste");
         reqs.push({
-          id: Date.now(),
+          id: String(Date.now()),
           email: document.getElementById('reqEmail').value,
           nome_cognome: document.getElementById('reqNome').value,
           mese: document.getElementById('reqMese').value,
@@ -626,18 +626,19 @@
 
       list.forEach(r => {
         let isPronto = r.stato === 'Pronti';
+        let safeId = String(r.id);
 
         container.innerHTML += `
           <div class="stCard p-4 bg-white space-y-3 text-xs w-full">
             <div class="flex justify-between items-center font-bold">
               <span>${r.nome_cognome} — <span class="${isPronto ? 'text-emerald-600':'text-amber-600'}">${isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE'}</span></span>
-              <button type="button" onclick="eliminaRichiesta('${r.id}')" class="text-red-500 hover:underline">🗑️ Elimina</button>
+              <button type="button" onclick="eliminaRichiesta('${safeId}')" class="text-red-500 hover:underline">🗑️ Elimina</button>
             </div>
             <div class="text-slate-600"><b>Email:</b> ${r.email} | <b>Periodo:</b> ${r.mese} ${r.anno} | <b>N° Ticket:</b> ${r.num_ticket}</div>
             <div class="flex items-center gap-4 pt-1">
               <a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>
               ${!isPronto ? `
-                <button type="button" onclick="segnaProntoAutomatico('\${r.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1 rounded text-xs transition shadow-sm">Segna come PRONTI 🚀</button>
+                <button type="button" onclick="window.eseguiSegnaPronto('\${safeId}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1 rounded text-xs transition shadow-sm">Segna come PRONTI 🚀</button>
               ` : `<span class="text-xs text-emerald-700 font-semibold">Associato all'Ordine: \${r.ordine_fattura || 'N/A'}</span>`}
             </div>
           </div>
@@ -645,16 +646,15 @@
       });
     }
 
-    // FUNZIONE DIRETTA SENZA MENU A TENDINA
-    function segnaProntoAutomatico(reqId) {
+    // FUNZIONE GLOBALE CONVERTITA IN STRINGA PERFETTA
+    window.eseguiSegnaPronto = function(reqId) {
       const ordini = getDB("db_ordini");
 
       if (!ordini || ordini.length === 0) {
-        alert("⚠️ Nessun ordine presente in Magazzino!\n\nInserisci un ordine nella sezione 'HR - Magazzino & Ordini'.");
+        alert("⚠️ Nessun ordine trovato in Magazzino!\n\nRegistra prima un ordine nella sezione 'HR - Magazzino & Ordini'.");
         return;
       }
 
-      // Prende in automatico l'ultimo ordine inserito in magazzino
       const ultimoOrdine = ordini[ordini.length - 1];
       let reqs = getDB("db_richieste");
       let req = reqs.find(r => String(r.id) === String(reqId));
@@ -667,7 +667,7 @@
         renderRichiesteHR();
         renderHRMagazzino();
       }
-    }
+    };
 
     function eliminaRichiesta(id) {
       if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {
@@ -888,7 +888,7 @@
       setDB("db_matrice", mat);
 
       let storico = getDB("db_storico_presenze");
-      storico.push({ id: Date.now(), mese: mese, anno: anno, data: new Date().toLocaleDateString('it-IT') });
+      storico.push({ id: String(Date.now()), mese: mese, anno: anno, data: new Date().toLocaleDateString('it-IT') });
       setDB("db_storico_presenze", storico);
 
       alert(`⚡ Matrice tessere popolata con successo per il mese di ${mese.toUpperCase()} ${anno}!`);
@@ -987,7 +987,7 @@
       let ordini = getDB("db_ordini");
 
       let nuovoOrdine = {
-        id: Date.now(),
+        id: String(Date.now()),
         fattura: fatturaInput,
         erogati_iniziali: parseInt(document.getElementById('erogatiIniziali').value) || 0,
         valore: document.getElementById('valoreTicket').value,
@@ -1043,7 +1043,7 @@
             <td class="p-2.5 text-amber-600 font-semibold">${erogatiTotali}</td>
             <td class="p-2.5">${o.residuo_precedente}</td>
             <td class="p-2.5 text-emerald-600 font-bold">${residuoTotale}</td>
-            <td class="p-2.5"><button type="button" onclick="eliminaOrdine('${o.id}')" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
+            <td class="p-2.5"><button type="button" onclick="eliminaOrdine('${String(o.id)}')" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
           </tr>
         `;
       });

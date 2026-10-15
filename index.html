@@ -136,7 +136,7 @@
       </div>
     </section>
 
-    <!-- SEZIONE 2: HR GESTIONE RICHIESTE (PROTEZIONE PASSWORD UNIFICATA) -->
+    <!-- SEZIONE 2: HR GESTIONE RICHIESTE -->
     <section id="section-gestione" class="block w-full">
       <div id="gestioneLocked" class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4">
         🔒 Inserisci la password HR nella barra laterale per accedere alla gestione richieste.
@@ -182,7 +182,7 @@
                 <label class="font-semibold text-slate-700">Seleziona Anno di Riferimento:</label>
                 <select id="matriceAnno" onchange="renderMatrice()" class="stInput px-3 py-1.5 font-semibold text-slate-800"></select>
               </div>
-              <button onclick="addNuovaTesseraPrompt()" class="stBtn px-4 py-2 text-xs font-semibold shadow-sm rounded-lg flex items-center gap-2">
+              <button type="button" onclick="addNuovaTesseraPrompt()" class="stBtn px-4 py-2 text-xs font-semibold shadow-sm rounded-lg flex items-center gap-2">
                 <span>➕</span> Aggiungi Nuova Tessera Digital
               </button>
             </div>
@@ -201,7 +201,7 @@
             </div>
 
             <div class="pt-2">
-              <button onclick="salvaMatriceTessere()" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2">
+              <button type="button" onclick="salvaMatriceTessere()" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2">
                 <span>💾</span> Salva Modifiche Tabella Tessere
               </button>
             </div>
@@ -237,13 +237,13 @@
                   <input type="file" id="presFile" accept=".xlsx,.xls,.csv" class="text-xs w-full">
                 </div>
               </div>
-              <button onclick="elaboraLibroPresenze()" class="stBtn px-4 py-2 text-xs font-semibold">🧮 Calcola Ticket</button>
+              <button type="button" onclick="elaboraLibroPresenze()" class="stBtn px-4 py-2 text-xs font-semibold">🧮 Calcola Ticket</button>
             </div>
 
             <div id="risultatiPresenzeBox" class="hidden stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs">🧮 Risultati Calcolo Spettanze Ticket</h4>
               <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket AQ (PREORD+SMARTW)</th><th class="p-2">Valore (€)</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
-              <button onclick="popolaMatriceDaPresenze()" class="bg-red-500 text-white px-4 py-2 rounded-md text-xs font-semibold">⚡ Applica e Popola Matrice Tessere</button>
+              <button type="button" onclick="popolaMatriceDaPresenze()" class="bg-red-500 text-white px-4 py-2 rounded-md text-xs font-semibold">⚡ Applica e Popola Matrice Tessere</button>
             </div>
 
             <div class="stCard p-6 space-y-3 w-full">
@@ -656,7 +656,7 @@
 
     function eliminaRichiesta(id) {
       if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {
-        let reqs = getDB("db_richieste").filter(r => r.id !== id);
+        let reqs = getDB("db_richieste").filter(r => Number(r.id) !== Number(id));
         setDB("db_richieste", reqs);
         renderRichiesteHR();
         renderHRMagazzino();
@@ -664,21 +664,21 @@
     }
 
     function segnaPronto(id) {
-      let sel = document.getElementById('selOrd_' + id);
-      let ordineFattura = sel ? sel.value : "";
+      let selectEl = document.getElementById('selOrd_' + id);
+      let ordineFattura = selectEl ? selectEl.value : "";
 
-      if(!ordineFattura) {
+      if(!ordineFattura || ordineFattura === "") {
         alert("⚠️ Seleziona un ordine/fattura prima di segnare la richiesta come Pronta!");
         return;
       }
 
       let reqs = getDB("db_richieste");
-      let req = reqs.find(r => r.id === id);
+      let req = reqs.find(r => Number(r.id) === Number(id));
       if(req) {
         req.stato = "Pronti";
         req.ordine_fattura = ordineFattura;
         setDB("db_richieste", reqs);
-        alert(`✅ Richiesta di ${req.nome_cognome} segnata come PRONTI e associata alla fattura ${ordineFattura}!`);
+        alert("✅ Richiesta segnata come PRONTI e associata alla fattura!");
         renderRichiesteHR();
         renderHRMagazzino();
       }
@@ -1016,7 +1016,7 @@
 
     function eliminaOrdine(id) {
       if(confirm("Sei sicuro di voler eliminare questo ordine?")) {
-        let ordini = getDB("db_ordini").filter(o => o.id !== id);
+        let ordini = getDB("db_ordini").filter(o => Number(o.id) !== Number(id));
         setDB("db_ordini", ordini);
         renderHRMagazzino();
         renderRichiesteHR();

@@ -136,24 +136,24 @@
       </div>
     </section>
 
-    <!-- SEZIONE 2: HR GESTIONE RICHIESTE -->
+    <!-- SEZIONE 2: HR GESTIONE RICHIESTE (PROTEZIONE PASSWORD UNIFICATA) -->
     <section id="section-gestione" class="block w-full">
-      <div id="gestioneLocked" class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4 hidden">
-        🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.
+      <div id="gestioneLocked" class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4">
+        🔒 Inserisci la password HR nella barra laterale per accedere alla gestione richieste.
       </div>
 
-      <div id="gestioneUnlocked" class="space-y-6 w-full">
+      <div id="gestioneUnlocked" class="hidden space-y-6 w-full">
         <div class="flex items-center gap-3 mb-2">
           <span class="text-3xl">📋</span>
           <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Dashboard Gestione Richieste (HR)</h1>
         </div>
 
         <div class="flex gap-8 border-b border-slate-200 text-xs font-medium pb-2 w-full">
-          <button id="mainTab1Btn" onclick="switchMainTab('tab1')" class="text-slate-500 pb-2 flex items-center gap-2"><span>📋</span> Richieste Moduli Cartacei/PDF</button>
-          <button id="mainTab2Btn" onclick="switchMainTab('tab2')" class="tab-active pb-2 flex items-center gap-2"><span>💳</span> Ticket Digitali (Tessere)</button>
+          <button id="mainTab1Btn" onclick="switchMainTab('tab1')" class="tab-active pb-2 flex items-center gap-2"><span>📋</span> Richieste Moduli Cartacei/PDF</button>
+          <button id="mainTab2Btn" onclick="switchMainTab('tab2')" class="text-slate-500 pb-2 flex items-center gap-2"><span>💳</span> Ticket Digitali (Tessere)</button>
         </div>
 
-        <div id="mainTab1" class="hidden space-y-4 w-full">
+        <div id="mainTab1" class="space-y-4 w-full">
           <div class="flex items-center gap-4 text-xs font-medium">
             <span>Filtra per Stato:</span>
             <label class="flex items-center gap-1"><input type="radio" name="filtroStato" value="Tutti" checked onchange="renderRichiesteHR()"> Tutti</label>
@@ -163,7 +163,7 @@
           <div id="richiesteList" class="space-y-3 w-full"></div>
         </div>
 
-        <div id="mainTab2" class="space-y-6 w-full">
+        <div id="mainTab2" class="hidden space-y-6 w-full">
           <div class="flex items-center gap-2">
             <span class="text-xl">💳</span>
             <h2 class="text-xl font-bold text-slate-800">Tracciamento Tessere Digitali & Calcolo Presenze</h2>
@@ -425,7 +425,7 @@
 
   <script>
     const PASSWORD_HR = "pallinerosa26!";
-    let isHrAuthenticated = true;
+    let isHrAuthenticated = false;
     let ultimiRisultatiCalcoloPresenze = [];
 
     const MESI_2026 = ["Ottobre", "Novembre", "Dicembre"];
@@ -523,6 +523,10 @@
         renderHRMagazzino();
       } else {
         isHrAuthenticated = false;
+        document.getElementById('gestioneLocked').classList.remove('hidden');
+        document.getElementById('gestioneUnlocked').classList.add('hidden');
+        document.getElementById('magazzinoLocked').classList.remove('hidden');
+        document.getElementById('magazzinoUnlocked').classList.add('hidden');
         if (pwd.length > 0) document.getElementById('pwdError').classList.remove('hidden');
       }
     }
@@ -581,6 +585,7 @@
     }
 
     function renderHRGestione() {
+      if(!isHrAuthenticated) return;
       renderRichiesteHR();
       renderMatrice();
       renderAnagrafica();
@@ -609,7 +614,8 @@
       const container = document.getElementById('richiesteList');
       const reqs = getDB("db_richieste");
       const ordini = getDB("db_ordini");
-      const filtro = document.querySelector('input[name="filtroStato"]:checked').value;
+      const filtroEl = document.querySelector('input[name="filtroStato"]:checked');
+      const filtro = filtroEl ? filtroEl.value : 'Tutti';
 
       container.innerHTML = "";
       const list = reqs.filter(r => filtro === 'Tutti' || r.stato === filtro);
@@ -977,7 +983,6 @@
       renderMatrice();
     }
 
-    // SALVA ORDINE MAGAZZINO (Funzione diretta per evitare submit nativo)
     function salvaOrdineMagazzino() {
       const fatturaInput = document.getElementById('ordFattura').value.trim();
       if(!fatturaInput) {
@@ -1001,12 +1006,10 @@
 
       alert("✅ Nuovo Ordine/Fattura salvato con successo nel Magazzino!");
 
-      // Ripristina campi form
       document.getElementById('formNuovoOrdine').reset();
       document.getElementById('valoreTicket').value = "5,20";
       document.getElementById('quantitaAcquistati').value = "2000";
 
-      // Aggiorna la vista magazzino e il dropdown nella sezione Gestione Richieste
       renderHRMagazzino();
       renderRichiesteHR();
     }
@@ -1021,6 +1024,7 @@
     }
 
     function renderHRMagazzino() {
+      if(!isHrAuthenticated) return;
       const ordiniTbody = document.getElementById('ordiniTbody');
       const ordini = getDB("db_ordini");
       const reqs = getDB("db_richieste").filter(r => r.stato === 'Pronti');

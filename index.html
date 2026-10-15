@@ -50,7 +50,7 @@
       </div>
     </div>
 
-    <!-- Area Riservata HR POSIZIONATA SUBITO SOTTO LE SEZIONI -->
+    <!-- Area Riservata HR -->
     <div id="hrAuthBox" class="mt-6 pt-6 border-t border-slate-300/70">
       <div class="flex items-center gap-2 mb-3">
         <span class="text-base">🔒</span>
@@ -65,7 +65,7 @@
     </div>
   </aside>
 
-  <!-- CONTENUTO PRINCIPALE FULL WIDTH -->
+  <!-- CONTENUTO PRINCIPALE -->
   <main class="flex-1 p-10 overflow-x-auto w-full max-w-none">
     <div class="flex justify-end mb-4">
       <span class="text-slate-400 text-xl font-bold cursor-pointer hover:text-slate-600">⋮</span>
@@ -91,9 +91,7 @@
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-2">Mese *</label>
               <div class="stInput px-4 py-2.5">
-                <select id="reqMese" required class="w-full bg-transparent border-none focus:outline-none text-sm appearance-none">
-                  <!-- Popolato dinamicamente -->
-                </select>
+                <select id="reqMese" required class="w-full bg-transparent border-none focus:outline-none text-sm appearance-none"></select>
               </div>
             </div>
             <div>
@@ -115,9 +113,7 @@
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-2">Anno *</label>
               <div class="stInput px-4 py-2.5">
-                <select id="reqAnno" required onchange="aggiornaMesiFormRichiesta()" class="w-full bg-transparent border-none focus:outline-none text-sm appearance-none">
-                  <!-- Popolato dinamicamente (2026 -> 2060) -->
-                </select>
+                <select id="reqAnno" required onchange="aggiornaMesiFormRichiesta()" class="w-full bg-transparent border-none focus:outline-none text-sm appearance-none"></select>
               </div>
             </div>
           </div>
@@ -140,7 +136,7 @@
       </div>
     </section>
 
-    <!-- SEZIONE 2: HR GESTIONE RICHIESTE FULL WIDTH -->
+    <!-- SEZIONE 2: HR GESTIONE RICHIESTE -->
     <section id="section-gestione" class="block w-full">
       <div id="gestioneLocked" class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4 hidden">
         🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.
@@ -152,13 +148,11 @@
           <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Dashboard Gestione Richieste (HR)</h1>
         </div>
 
-        <!-- MAIN TABS -->
         <div class="flex gap-8 border-b border-slate-200 text-xs font-medium pb-2 w-full">
           <button id="mainTab1Btn" onclick="switchMainTab('tab1')" class="text-slate-500 pb-2 flex items-center gap-2"><span>📋</span> Richieste Moduli Cartacei/PDF</button>
           <button id="mainTab2Btn" onclick="switchMainTab('tab2')" class="tab-active pb-2 flex items-center gap-2"><span>💳</span> Ticket Digitali (Tessere)</button>
         </div>
 
-        <!-- MAIN TAB 1: CARTACEI -->
         <div id="mainTab1" class="hidden space-y-4 w-full">
           <div class="flex items-center gap-4 text-xs font-medium">
             <span>Filtra per Stato:</span>
@@ -169,28 +163,24 @@
           <div id="richiesteList" class="space-y-3 w-full"></div>
         </div>
 
-        <!-- MAIN TAB 2: TICKET DIGITALI FULL WIDTH -->
         <div id="mainTab2" class="space-y-6 w-full">
           <div class="flex items-center gap-2">
             <span class="text-xl">💳</span>
             <h2 class="text-xl font-bold text-slate-800">Tracciamento Tessere Digitali & Calcolo Presenze</h2>
           </div>
 
-          <!-- SUB TABS -->
           <div class="flex gap-6 border-b border-slate-200 text-xs font-medium pb-2 w-full">
             <button id="subTabABtn" onclick="switchSubTab('subA')" class="subtab-active pb-2 flex items-center gap-1"><span>📊</span> Matrice Tessere Digitali</button>
             <button id="subTabBBtn" onclick="switchSubTab('subB')" class="text-slate-500 pb-2 flex items-center gap-1"><span>📁</span> Upload & Storico Libro Presenze</button>
             <button id="subTabCBtn" onclick="switchSubTab('subC')" class="text-slate-500 pb-2 flex items-center gap-1"><span>👥</span> Anagrafica Nominativi con Diritto</button>
           </div>
 
-          <!-- SUB A: MATRICE TESSERE DIGITALI FULL WIDTH -->
+          <!-- SUB A: MATRICE TESSERE DIGITALI -->
           <div id="subTabA" class="space-y-4 w-full">
             <div class="flex justify-between items-center w-full">
               <div class="flex items-center gap-2 text-xs">
                 <label class="font-semibold text-slate-700">Seleziona Anno di Riferimento:</label>
-                <select id="matriceAnno" onchange="renderMatrice()" class="stInput px-3 py-1.5 font-semibold text-slate-800">
-                  <!-- Popolato dinamicamente da JS (2026 -> 2060) -->
-                </select>
+                <select id="matriceAnno" onchange="renderMatrice()" class="stInput px-3 py-1.5 font-semibold text-slate-800"></select>
               </div>
               <button onclick="addNuovaTesseraPrompt()" class="stBtn px-4 py-2 text-xs font-semibold shadow-sm rounded-lg flex items-center gap-2">
                 <span>➕</span> Aggiungi Nuova Tessera Digital
@@ -198,19 +188,15 @@
             </div>
 
             <div class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-3 flex items-center gap-2 font-medium">
-              <span>💡</span> Inserisci o modifica i dati nelle celle e salva. Le assegnazioni e le nuove tessere si propagano automaticamente per gli anni successivi.
+              <span>💡</span> Inserisci o modifica i dati nelle celle e salva. Tessere e assegnazioni si sincronizzano automaticamente su tutti gli anni.
             </div>
 
             <div class="overflow-x-auto border rounded-lg w-full">
               <table class="w-full text-xs text-left border-collapse">
                 <thead class="bg-slate-50 border-b text-slate-600 font-semibold">
-                  <tr id="matriceTheadRow">
-                    <!-- Popolato dinamicamente -->
-                  </tr>
+                  <tr id="matriceTheadRow"></tr>
                 </thead>
-                <tbody id="matriceTbody" class="divide-y divide-slate-100">
-                  <!-- Popolato dinamicamente -->
-                </tbody>
+                <tbody id="matriceTbody" class="divide-y divide-slate-100"></tbody>
               </table>
             </div>
 
@@ -220,7 +206,6 @@
               </button>
             </div>
 
-            <!-- RECAP NUMERO TICKET E VALORE ECONOMICO -->
             <div class="pt-6 border-t border-slate-200 mt-6 grid grid-cols-2 gap-8 w-full">
               <div>
                 <p id="labelTotTicket" class="text-xs text-slate-500 font-semibold mb-1">Totale Ticket Caricati (2026)</p>
@@ -233,7 +218,7 @@
             </div>
           </div>
 
-          <!-- SUB B: PRESENZE FULL WIDTH -->
+          <!-- SUB B: PRESENZE -->
           <div id="subTabB" class="hidden space-y-4 w-full">
             <div class="stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs text-slate-800">📄 Upload Nuovo Libro Presenze Mensile (Colonna AQ)</h4>
@@ -241,15 +226,11 @@
               <div class="grid grid-cols-3 gap-4">
                 <div>
                   <label class="block text-xs font-semibold mb-1">Mese Presenze:</label>
-                  <select id="presMese" class="stInput p-2 text-xs w-full">
-                    <!-- Popolato dinamicamente -->
-                  </select>
+                  <select id="presMese" class="stInput p-2 text-xs w-full"></select>
                 </div>
                 <div>
                   <label class="block text-xs font-semibold mb-1">Anno Presenze:</label>
-                  <select id="presAnno" onchange="aggiornaMesiPresenze()" class="stInput p-2 text-xs w-full">
-                    <!-- Popolato dinamicamente -->
-                  </select>
+                  <select id="presAnno" onchange="aggiornaMesiPresenze()" class="stInput p-2 text-xs w-full"></select>
                 </div>
                 <div>
                   <label class="block text-xs font-semibold mb-1">Seleziona File (Excel/CSV):</label>
@@ -271,7 +252,7 @@
             </div>
           </div>
 
-          <!-- SUB C: ANAGRAFICA NOMINATIVI FULL WIDTH -->
+          <!-- SUB C: ANAGRAFICA -->
           <div id="subTabC" class="hidden space-y-6 w-full">
             <div class="flex items-center gap-2">
               <span class="text-xl">👥</span>
@@ -279,7 +260,6 @@
             </div>
             <p class="text-xs text-slate-600 -mt-4">Aggiungi o modifica i dipendenti che hanno diritto a <b>1 ticket per giorno lavorato</b>.</p>
 
-            <!-- FORM AGGIUNTA DIPENDENTE -->
             <div class="stCard p-6 bg-white w-full">
               <form onsubmit="salvaDipendenteAnagrafica(event)" class="space-y-4">
                 <div class="grid grid-cols-12 gap-6 items-center">
@@ -312,10 +292,8 @@
               </form>
             </div>
 
-            <!-- TABELLA LISTA DIPENDENTI REGISTRATI -->
             <div class="space-y-3 w-full">
               <h3 class="text-lg font-bold text-slate-800">Lista Dipendenti Registrati</h3>
-              
               <div class="stCard overflow-hidden w-full">
                 <table class="w-full text-xs text-left border-collapse">
                   <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
@@ -326,14 +304,11 @@
                       <th class="p-2.5 w-1/3">Note</th>
                     </tr>
                   </thead>
-                  <tbody id="anagraficaTbody" class="divide-y divide-slate-100">
-                    <!-- Popolato dinamicamente da JS -->
-                  </tbody>
+                  <tbody id="anagraficaTbody" class="divide-y divide-slate-100"></tbody>
                 </table>
               </div>
             </div>
 
-            <!-- ACCORDION RIMUOVI DIPENDENTE -->
             <div class="stCard overflow-hidden w-full">
               <div class="bg-slate-50/80 px-4 py-2.5 border-b border-slate-200 text-xs text-slate-700 flex items-center gap-2 font-medium">
                 <span>⌄</span>
@@ -343,9 +318,7 @@
               <div class="p-6 bg-white space-y-4">
                 <label class="block text-xs font-semibold text-slate-700">Seleziona Dipendente da Rimuovere:</label>
                 <div class="stInput px-4 py-2">
-                  <select id="selectDipendenteRimuovere" class="w-full bg-transparent border-none focus:outline-none text-xs text-slate-800 appearance-none">
-                    <!-- Popolato dinamicamente da JS -->
-                  </select>
+                  <select id="selectDipendenteRimuovere" class="w-full bg-transparent border-none focus:outline-none text-xs text-slate-800 appearance-none"></select>
                 </div>
                 <div>
                   <button type="button" onclick="confermaRimuoviDipendente()" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-xs px-4 py-2.5 rounded-lg shadow-sm transition">
@@ -360,7 +333,7 @@
       </div>
     </section>
 
-    <!-- SEZIONE 3: HR MAGAZZINO FULL WIDTH -->
+    <!-- SEZIONE 3: HR MAGAZZINO -->
     <section id="section-magazzino" class="hidden w-full">
       <div id="magazzinoLocked" class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4">
         🔒 Inserisci la password HR nella barra laterale per accedere a questa sezione.
@@ -470,14 +443,19 @@
       { nome: "AMIRI ELINA", diritto: true, note: "" }
     ];
 
+    function getDB(k) { return JSON.parse(localStorage.getItem(k) || "[]"); }
+    function setDB(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+
     function initDB() {
       if(!localStorage.getItem("db_richieste")) localStorage.setItem("db_richieste", JSON.stringify([]));
       if(!localStorage.getItem("db_ordini")) localStorage.setItem("db_ordini", JSON.stringify([]));
       if(!localStorage.getItem("db_storico_presenze")) localStorage.setItem("db_storico_presenze", JSON.stringify([]));
       if(!localStorage.getItem("db_anagrafica")) localStorage.setItem("db_anagrafica", JSON.stringify(dipendentiDefault));
       
-      if(!localStorage.getItem("db_matrice")) {
-        let mat = [];
+      // FORZA CREAZIONE E RIGENERAZIONE MATRICE MULTI-ANNO
+      let mat = getDB("db_matrice");
+      if(!mat || mat.length === 0 || !mat.some(m => m.anno === 2027)) {
+        mat = [];
         for(let a=2026; a<=2060; a++) {
           let mesiAnno = (a === 2026) ? MESI_2026 : MESI_TUTTI;
           for(let i=1; i<=30; i++) {
@@ -487,13 +465,10 @@
             mat.push(row);
           }
         }
-        localStorage.setItem("db_matrice", JSON.stringify(mat));
+        setDB("db_matrice", mat);
       }
     }
     initDB();
-
-    function getDB(k) { return JSON.parse(localStorage.getItem(k) || "[]"); }
-    function setDB(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
 
     function popolaAnniSelect() {
       const selectAnnoMatrice = document.getElementById('matriceAnno');
@@ -669,12 +644,29 @@
       });
     }
 
+    // RENDER MATRICE CON AUTO-PROPAGAZIONE E AUTO-CLONAZIONE TRA ANNI
     function renderMatrice() {
       const tbody = document.getElementById('matriceTbody');
       const theadRow = document.getElementById('matriceTheadRow');
       const anno = parseInt(document.getElementById('matriceAnno').value);
       const listaDipendenti = getDB("db_anagrafica");
-      const mat = getDB("db_matrice").filter(m => m.anno === anno);
+      let mat = getDB("db_matrice");
+
+      // SE L'ANNO SELEZIONATO NON HA DATI, COPIA LE TESSERE E LE ASSEGNAZIONI DALL'ANNO PRECEDENTE
+      let matAnno = mat.filter(m => m.anno === anno);
+      if(matAnno.length === 0) {
+        let matAnnoPrec = mat.filter(m => m.anno === (anno - 1));
+        if(matAnnoPrec.length === 0) matAnnoPrec = mat.filter(m => m.anno === 2026);
+
+        let mesiAnno = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
+        matAnnoPrec.forEach(prevRow => {
+          let newRow = { numero_tessera: prevRow.numero_tessera, assegnato_a: prevRow.assegnato_a, anno: anno };
+          mesiAnno.forEach(m => newRow[m.toLowerCase()] = 0);
+          mat.push(newRow);
+        });
+        setDB("db_matrice", mat);
+        matAnno = mat.filter(m => m.anno === anno);
+      }
 
       const listaMesiTabella = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
 
@@ -687,7 +679,7 @@
       tbody.innerHTML = "";
       let tot = 0;
 
-      mat.forEach(r => {
+      matAnno.forEach(r => {
         let optionsDip = `<option value="">- Non Assegnato -</option>`;
         listaDipendenti.forEach(dip => {
           let selected = (r.assegnato_a === dip.nome) ? "selected" : "";
@@ -712,7 +704,7 @@
       document.getElementById('totValoreMatrice').textContent = "€ " + (tot * 5.20).toFixed(2).replace('.', ',');
     }
 
-    // SALVATAGGIO MATRICE CON PROPAGAZIONE AUTOMATICA PER TUTTI GLI ANNI SUCCESSIVI
+    // SALVATAGGIO REALE E GARANTITO PER TUTTI GLI ANNI DAL 2026 AL 2060
     function salvaMatriceTessere() {
       const annoCorrente = parseInt(document.getElementById('matriceAnno').value);
       let mat = getDB("db_matrice");
@@ -728,29 +720,33 @@
           if(mese) rowCorrente[mese] = parseInt(el.value) || 0;
           if(field) {
             rowCorrente[field] = el.value;
-            // Propaga l'assegnazione della tessera a tutti gli anni successivi (da annoCorrente+1 a 2060)
-            for(let a = annoCorrente + 1; a <= 2060; a++) {
-              let rowFutura = mat.find(m => m.numero_tessera === tess && m.anno === a);
-              if(rowFutura) rowFutura[field] = el.value;
+
+            // Sincronizza l'assegnazione della tessera su TUTTI gli anni (2026 -> 2060)
+            for(let a = 2026; a <= 2060; a++) {
+              let rowAnno = mat.find(m => m.numero_tessera === tess && m.anno === a);
+              if(rowAnno) {
+                rowAnno[field] = el.value;
+              } else {
+                let mesiAnno = (a === 2026) ? MESI_2026 : MESI_TUTTI;
+                let newRow = { numero_tessera: tess, assegnato_a: el.value, anno: a };
+                mesiAnno.forEach(m => newRow[m.toLowerCase()] = 0);
+                mat.push(newRow);
+              }
             }
           }
         }
       });
 
       setDB("db_matrice", mat);
-      alert('✅ Matrice salvata! Le modifiche e le assegnazioni sono state applicate anche a tutti gli anni successivi.');
+      alert('✅ Modifiche salvate con successo! Le tessere e le assegnazioni sono ora sincronizzate per tutti gli anni.');
       renderMatrice();
     }
 
-    // AGGIUNTA TESSERA CON PROPAGAZIONE AUTOMATICA A TUTTI GLI ANNI SUCCESSIVI
     function addNuovaTesseraPrompt() {
       let num = prompt("Inserisci Numero Nuova Tessera:");
       if(num) {
         let mat = getDB("db_matrice");
-        let annoCorrente = parseInt(document.getElementById('matriceAnno').value);
-
-        // Aggiunge la tessera per l'anno selezionato e per tutti gli anni futuri fino al 2060
-        for(let a = annoCorrente; a <= 2060; a++) {
+        for(let a = 2026; a <= 2060; a++) {
           let listaMesiTabella = (a === 2026) ? MESI_2026 : MESI_TUTTI;
           let rowGiàPresente = mat.find(m => m.numero_tessera === num && m.anno === a);
 
@@ -760,7 +756,6 @@
             mat.push(r);
           }
         }
-
         setDB("db_matrice", mat);
         renderMatrice();
       }

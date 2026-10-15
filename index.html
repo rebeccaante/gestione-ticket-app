@@ -634,7 +634,7 @@
         });
 
         container.innerHTML += `
-          <div class="stCard p-4 bg-white space-y-3 text-xs w-full">
+          <div class="stCard p-4 bg-white space-y-3 text-xs w-full" data-reqid="${r.id}">
             <div class="flex justify-between items-center font-bold">
               <span>${r.nome_cognome} — <span class="${isPronto ? 'text-emerald-600':'text-amber-600'}">${isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE'}</span></span>
               <button type="button" onclick="eliminaRichiesta(${r.id})" class="text-red-500 hover:underline">🗑️ Elimina</button>
@@ -644,8 +644,8 @@
               <a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>
               ${!isPronto ? `
                 <div class="flex items-center gap-2">
-                  <select class="stInput px-2 py-1 text-xs text-slate-800 font-semibold">\${ordOpts}</select>
-                  <button type="button" onclick="eseguiSegnaPronto(\${r.id}, this)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1 rounded text-xs transition">Segna come PRONTI 🚀</button>
+                  <select class="sel-ordine-input stInput px-2 py-1 text-xs text-slate-800 font-semibold">\${ordOpts}</select>
+                  <button type="button" class="btn-pronto-action bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1 rounded text-xs transition">Segna come PRONTI 🚀</button>
                 </div>
               ` : `<span class="text-xs text-emerald-700 font-semibold">Associato all'Ordine: \${r.ordine_fattura || 'N/A'}</span>`}
             </div>
@@ -654,27 +654,34 @@
       });
     }
 
-    // Lettura diretta senza lookup per ID
-    function eseguiSegnaPronto(id, btnElement) {
-      let selectElement = btnElement.previousElementSibling;
-      let ordineFattura = selectElement ? selectElement.value : "";
+    // REGISTRAZIONE EVENTO NATIVO PER GLI EVENTI CLICK
+    document.addEventListener('click', function(evt) {
+      if (evt.target && evt.target.classList.contains('btn-pronto-action')) {
+        evt.preventDefault();
+        const cardParent = evt.target.closest('[data-reqid]');
+        if (!cardParent) return;
 
-      if(!ordineFattura || ordineFattura === "") {
-        alert("⚠️ Seleziona un ordine/fattura prima di segnare la richiesta come Pronta!");
-        return;
-      }
+        const reqId = cardParent.getAttribute('data-reqid');
+        const selectEl = cardParent.querySelector('.sel-ordine-input');
+        const ordineFattura = selectEl ? selectEl.value : "";
 
-      let reqs = getDB("db_richieste");
-      let req = reqs.find(r => Number(r.id) === Number(id));
-      if(req) {
-        req.stato = "Pronti";
-        req.ordine_fattura = ordineFattura;
-        setDB("db_richieste", reqs);
-        alert(`✅ Richiesta segnata come PRONTI e associata alla fattura ${ordineFattura}!`);
-        renderRichiesteHR();
-        renderHRMagazzino();
+        if (!ordineFattura) {
+          alert("⚠️ Seleziona prima un ordine dal menu a tendina affiancato!");
+          return;
+        }
+
+        let reqs = getDB("db_richieste");
+        let req = reqs.find(r => String(r.id) === String(reqId));
+        if (req) {
+          req.stato = "Pronti";
+          req.ordine_fattura = ordineFattura;
+          setDB("db_richieste", reqs);
+          alert(`✅ Richiesta di ${req.nome_cognome} segnata come PRONTI e associata alla fattura ${ordineFattura}!`);
+          renderRichiesteHR();
+          renderHRMagazzino();
+        }
       }
-    }
+    });
 
     function eliminaRichiesta(id) {
       if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {

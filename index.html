@@ -6,6 +6,8 @@
   <title>Gestione Ticket HR</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Source Sans Pro', -apple-system, sans-serif; background-color: #ffffff; color: #31333F; }
@@ -125,7 +127,7 @@
           </div>
 
           <div class="pt-2">
-            <button type="submit" class="stBtn px-5 py-2.5 text-xs font-semibold shadow-sm">Invia Richiesta</button>
+            <button type="submit" id="btnSubmitReq" class="stBtn px-5 py-2.5 text-xs font-semibold shadow-sm">Invia Richiesta</button>
           </div>
         </form>
       </div>
@@ -183,7 +185,7 @@
             </div>
 
             <div class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-3 flex items-center gap-2 font-medium">
-              <span>💡</span> I valori nei mesi si popolano in automatico dal Libro Presenze. Salvando, le assegnazioni dei nomi si propagano dall'anno selezionato a quelli futuri.
+              <span>💡</span> I valori nei mesi si popolano in automatico dal Libro Presenze. Salvando, le assegnazioni dei nomi si propagano dall'anno selezionato a quelli futuri nel Cloud.
             </div>
 
             <div class="overflow-x-auto border rounded-lg w-full">
@@ -197,7 +199,7 @@
 
             <div class="pt-2">
               <button type="button" onclick="salvaMatriceTessere()" class="bg-red-500 hover:bg-red-600 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2">
-                <span>💾</span> Salva Modifiche Tabella Tessere
+                <span>💾</span> Salva Modifiche Tabella Tessere su Cloud
               </button>
             </div>
 
@@ -217,7 +219,7 @@
           <div id="subTabB" class="hidden space-y-4 w-full">
             <div class="stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs text-slate-800">📄 Upload Nuovo Libro Presenze Mensile</h4>
-              <p class="text-xs text-slate-500">Estrae i ticket dalla Colonna AQ e popola **automaticamente** la Matrice Tessere salvando lo storico.</p>
+              <p class="text-xs text-slate-500">Estrae i ticket dalla Colonna AQ e popola **automaticamente** la Matrice Tessere salvando lo storico nel Cloud.</p>
               <div class="grid grid-cols-3 gap-4">
                 <div>
                   <label class="block text-xs font-semibold mb-1">Mese Presenze:</label>
@@ -238,14 +240,14 @@
             <div id="risultatiPresenzeBox" class="hidden stCard p-6 space-y-4 w-full">
               <div class="flex items-center justify-between">
                 <h4 class="font-bold text-xs">🧮 Risultati Calcolo Spettanze Ticket (Applicati in Matrice)</h4>
-                <span class="text-xs text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">✓ Dati Salvati in Matrice e nello Storico</span>
+                <span class="text-xs text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">✓ Dati Salvati in Matrice e nello Storico Cloud</span>
               </div>
               <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket AQ (PREORD + SMARTW)</th><th class="p-2">Valore (€)</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
             </div>
 
             <div class="stCard p-6 space-y-3 w-full">
-              <h4 class="font-bold text-xs">📚 Archivio Storico Libri Presenze Caricati</h4>
-              <p class="text-xs text-slate-500">I file caricati vengono salvati qui per la consultazione permanente.</p>
+              <h4 class="font-bold text-xs">📚 Archivio Storico Libri Presenze Caricati (Cloud)</h4>
+              <p class="text-xs text-slate-500">I file caricati vengono salvati sul Cloud per la consultazione da qualsiasi postazione HR.</p>
               <div id="storicoPresenzeList" class="text-xs space-y-2"></div>
             </div>
           </div>
@@ -406,7 +408,7 @@
         </div>
 
         <div class="space-y-4 w-full">
-          <h3 class="text-sm font-bold text-slate-800">📋 Riepilogo Ordini & Giacenza Ticket</h3>
+          <h3 class="text-sm font-bold text-slate-800">📋 Riepilogo Ordini & Giacenza Ticket (Cloud)</h3>
           <div class="stCard overflow-hidden w-full">
             <table class="w-full text-xs text-left border-collapse">
               <thead class="bg-slate-50 border-b">
@@ -422,6 +424,11 @@
   </main>
 
   <script>
+    // CREDENZIALI SUPABASE
+    const SUPABASE_URL = "https://mvdcrqmgjtqtllnexdwb.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_BzXfnuLH_bur-gQFf77keQ_RTbUSiOo";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     const PASSWORD_HR = "pallinerosa26!";
     let isHrAuthenticated = false;
     let ultimiRisultatiCalcoloPresenze = [];
@@ -444,28 +451,26 @@
       { nome: "AMIRI ELINA", diritto: true, note: "" }
     ];
 
-    function getDB(k) { return JSON.parse(localStorage.getItem(k) || "[]"); }
-    function setDB(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+    async function initDBCloud() {
+      // Inizializza Anagrafica se vuota nel cloud
+      const { data: anag } = await _supabase.from('anagrafica').select('id');
+      if (!anag || anag.length === 0) {
+        await _supabase.from('anagrafica').insert(dipendentiDefault);
+      }
 
-    function initDB() {
-      if(!localStorage.getItem("db_richieste")) localStorage.setItem("db_richieste", JSON.stringify([]));
-      if(!localStorage.getItem("db_ordini")) localStorage.setItem("db_ordini", JSON.stringify([]));
-      if(!localStorage.getItem("db_storico_presenze")) localStorage.setItem("db_storico_presenze", JSON.stringify([]));
-      if(!localStorage.getItem("db_anagrafica")) localStorage.setItem("db_anagrafica", JSON.stringify(dipendentiDefault));
-
-      let mat = getDB("db_matrice");
-      if(!mat || mat.length === 0) {
-        mat = [];
+      // Inizializza Matrice Tessere se vuota
+      const { data: mat } = await _supabase.from('matrice_tessere').select('id');
+      if (!mat || mat.length === 0) {
+        let rows = [];
         for(let i=1; i<=30; i++) {
           let num = "008000" + (i < 10 ? "0" + i : i);
-          let row = { numero_tessera: num, assegnato_a: "", anno: 2026 };
-          MESI_2026.forEach(m => row[m.toLowerCase()] = 0);
-          mat.push(row);
+          let row = { numero_tessera: num, assegnato_a: "", anno: 2026, dati_mesi: { ottobre: 0, novembre: 0, dicembre: 0 } };
+          rows.push(row);
         }
-        setDB("db_matrice", mat);
+        await _supabase.from('matrice_tessere').insert(rows);
       }
     }
-    initDB();
+    initDBCloud();
 
     function popolaAnniSelect() {
       const selectAnnoMatrice = document.getElementById('matriceAnno');
@@ -556,54 +561,61 @@
       }
     }
 
-    function handleFormSubmit(e) {
+    async function handleFormSubmit(e) {
       e.preventDefault();
-      const fileInput = document.getElementById('reqFile');
-      const reader = new FileReader();
+      const btn = document.getElementById('btnSubmitReq');
+      btn.disabled = true;
+      btn.textContent = "Invio in corso a Supabase...";
 
-      reader.onload = function(evt) {
-        let reqs = getDB("db_richieste");
-        reqs.push({
-          id: String(Date.now()),
+      const fileInput = document.getElementById('reqFile');
+      const fileObj = fileInput.files[0];
+      let publicUrl = "#";
+      let originalFileName = fileObj ? fileObj.name : "modulo.pdf";
+
+      try {
+        if (fileObj) {
+          const fileExt = fileObj.name.split('.').pop();
+          const filePath = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+          const { uploadData, error: uploadError } = await _supabase.storage
+            .from('moduli')
+            .upload(filePath, fileObj);
+
+          if (uploadError) throw uploadError;
+
+          const { data: urlData } = _supabase.storage
+            .from('moduli')
+            .getPublicUrl(filePath);
+
+          publicUrl = urlData.publicUrl;
+        }
+
+        const { error: dbError } = await _supabase.from('richieste').insert([{
           email: document.getElementById('reqEmail').value,
           nome_cognome: document.getElementById('reqNome').value,
           mese: document.getElementById('reqMese').value,
-          anno: document.getElementById('reqAnno').value,
+          anno: parseInt(document.getElementById('reqAnno').value),
           num_ticket: parseInt(document.getElementById('ticketCount').value) || 1,
-          file_url: evt.target.result,
-          file_name: fileInput.files[0] ? fileInput.files[0].name : "modulo.pdf",
-          stato: "In lavorazione",
-          ordine_fattura: null
-        });
-        setDB("db_richieste", reqs);
-        alert('✅ Richiesta inviata con successo!');
+          file_url: publicUrl,
+          file_name: originalFileName,
+          stato: 'In lavorazione'
+        }]);
+
+        if (dbError) throw dbError;
+
+        alert('✅ Richiesta salvata nel cloud Supabase con successo!');
         e.target.reset();
         const display = document.getElementById('fileNameDisplay');
         if(display) {
           display.textContent = '200MB per file • PDF, PNG, JPG';
           display.className = 'text-xs text-slate-400';
         }
-      };
-
-      if(fileInput && fileInput.files[0]) {
-        reader.readAsDataURL(fileInput.files[0]);
-      } else {
-        let reqs = getDB("db_richieste");
-        reqs.push({
-          id: String(Date.now()),
-          email: document.getElementById('reqEmail').value,
-          nome_cognome: document.getElementById('reqNome').value,
-          mese: document.getElementById('reqMese').value,
-          anno: document.getElementById('reqAnno').value,
-          num_ticket: parseInt(document.getElementById('ticketCount').value) || 1,
-          file_url: "#",
-          file_name: "modulo.pdf",
-          stato: "In lavorazione",
-          ordine_fattura: null
-        });
-        setDB("db_richieste", reqs);
-        alert('✅ Richiesta inviata con successo!');
-        e.target.reset();
+      } catch (err) {
+        console.error("Errore Supabase:", err);
+        alert("❌ Errore durante l'invio su Supabase: " + (err.message || err));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Invia Richiesta";
       }
     }
 
@@ -633,81 +645,108 @@
       if(s === 'subC') renderAnagrafica();
     }
 
-    function renderRichiesteHR() {
+    async function renderRichiesteHR() {
       const container = document.getElementById('richiesteList');
       if(!container) return;
-      const reqs = getDB("db_richieste");
+
       const filtroEl = document.querySelector('input[name="filtroStato"]:checked');
       const filtro = filtroEl ? filtroEl.value : 'Tutti';
 
-      container.innerHTML = "";
+      container.innerHTML = `<p class="text-xs text-slate-500">Caricamento richieste dal cloud...</p>`;
 
-      if(reqs.length === 0) {
-        container.innerHTML = `<div class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4">Nessuna richiesta ricevuta al momento.</div>`;
-        return;
+      try {
+        const { data: reqs, error } = await _supabase
+          .from('richieste')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        container.innerHTML = "";
+
+        if(!reqs || reqs.length === 0) {
+          container.innerHTML = `<div class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4">Nessuna richiesta ricevuta nel cloud al momento.</div>`;
+          return;
+        }
+
+        reqs.forEach(r => {
+          if (filtro !== 'Tutti' && r.stato !== filtro) return;
+          let isPronto = r.stato === 'Pronti';
+
+          let btnAzione = !isPronto 
+            ? `<button type="button" onclick="segnaProntoInLavorazione('${r.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition shadow-sm cursor-pointer">Segna come PRONTI 🚀</button>`
+            : `<span class="text-xs text-emerald-700 font-semibold">Associato all&#39;Ordine: ${r.ordine_fattura || 'N/A'}</span>`;
+
+          let btnDownload = (r.file_url && r.file_url !== '#')
+            ? `<a href="${r.file_url}" target="_blank" download="${r.file_name || 'modulo.pdf'}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>`
+            : '';
+
+          container.innerHTML += `
+            <div class="stCard p-4 bg-white space-y-3 text-xs w-full">
+              <div class="flex justify-between items-center font-bold">
+                <span>${r.nome_cognome} — <span class="${isPronto ? 'text-emerald-600':'text-amber-600'}">${isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE'}</span></span>
+                <button type="button" onclick="eliminaRichiesta('${r.id}')" class="text-red-500 hover:underline">🗑️ Elimina</button>
+              </div>
+              <div class="text-slate-600"><b>Email:</b> ${r.email || 'N/A'} | <b>Periodo:</b> ${r.mese || ''} ${r.anno || ''} | <b>N° Ticket:</b> ${r.num_ticket || 1}</div>
+              <div class="flex items-center gap-4 pt-1">
+                ${btnDownload}
+                ${btnAzione}
+              </div>
+            </div>
+          `;
+        });
+      } catch (err) {
+        console.error("Errore caricamento da Supabase:", err);
+        container.innerHTML = `<p class="text-xs text-red-500">❌ Errore nel recupero delle richieste da Supabase.</p>`;
       }
-
-      reqs.forEach((r, idx) => {
-        if (filtro !== 'Tutti' && r.stato !== filtro) return;
-        let isPronto = r.stato === 'Pronti';
-
-        let btnAzione = !isPronto 
-          ? `<button type="button" onclick="segnaProntoInLavorazione(${idx})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition shadow-sm cursor-pointer">Segna come PRONTI 🚀</button>`
-          : `<span class="text-xs text-emerald-700 font-semibold">Associato all&#39;Ordine: ${r.ordine_fattura || 'N/A'}</span>`;
-
-        let btnDownload = (r.file_url && r.file_url !== '#')
-          ? `<a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>`
-          : '';
-
-        container.innerHTML += `
-          <div class="stCard p-4 bg-white space-y-3 text-xs w-full">
-            <div class="flex justify-between items-center font-bold">
-              <span>${r.nome_cognome} — <span class="${isPronto ? 'text-emerald-600':'text-amber-600'}">${isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE'}</span></span>
-              <button type="button" onclick="eliminaRichiesta(${idx})" class="text-red-500 hover:underline">🗑️ Elimina</button>
-            </div>
-            <div class="text-slate-600"><b>Email:</b> ${r.email || 'N/A'} | <b>Periodo:</b> ${r.mese || ''} ${r.anno || ''} | <b>N° Ticket:</b> ${r.num_ticket || 1}</div>
-            <div class="flex items-center gap-4 pt-1">
-              ${btnDownload}
-              ${btnAzione}
-            </div>
-          </div>
-        `;
-      });
     }
 
-    function segnaProntoInLavorazione(idx) {
-      let ordini = getDB("db_ordini");
+    async function segnaProntoInLavorazione(id) {
+      let { data: ordini } = await _supabase.from('ordini').select('*').order('created_at', { ascending: true });
 
       if (!ordini || ordini.length === 0) {
-        ordini = [{ id: "1", fattura: "ORD-2026-01", acquistati: 1000, erogati_iniziali: 0, valore: "5,20", residuo_precedente: 0 }];
-        setDB("db_ordini", ordini);
+        let defaultOrd = { fattura: "ORD-2026-01", acquistati: 1000, erogati_iniziali: 0, valore: "5,20", residuo_precedente: 0 };
+        const { data: newOrd } = await _supabase.from('ordini').insert([defaultOrd]).select();
+        ordini = newOrd;
       }
 
       let ultimoOrdine = ordini[ordini.length - 1].fattura;
-      let reqs = getDB("db_richieste");
 
-      if (reqs[idx] !== undefined) {
-        reqs[idx].stato = "Pronti";
-        reqs[idx].ordine_fattura = ultimoOrdine;
-        setDB("db_richieste", reqs);
-        alert("✅ Stato aggiornato a PRONTI! Scalato dall'ordine: " + ultimoOrdine);
+      try {
+        const { error } = await _supabase
+          .from('richieste')
+          .update({ stato: 'Pronti', ordine_fattura: ultimoOrdine })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        alert("✅ Stato aggiornato nel cloud a PRONTI! Scalato dall'ordine: " + ultimoOrdine);
         renderRichiesteHR();
         renderHRMagazzino();
+      } catch (err) {
+        alert("❌ Errore durante l'aggiornamento su Supabase: " + err.message);
       }
     }
 
-    function eliminaRichiesta(idx) {
-      if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {
-        let reqs = getDB("db_richieste");
-        reqs.splice(idx, 1);
-        setDB("db_richieste", reqs);
-        renderRichiesteHR();
-        renderHRMagazzino();
+    async function eliminaRichiesta(id) {
+      if(confirm("Sei sicuro di voler eliminare questa richiesta dal cloud?")) {
+        try {
+          const { error } = await _supabase
+            .from('richieste')
+            .delete()
+            .eq('id', id);
+
+          if (error) throw error;
+
+          renderRichiesteHR();
+          renderHRMagazzino();
+        } catch (err) {
+          alert("❌ Errore durante l'eliminazione: " + err.message);
+        }
       }
     }
 
-    // CALCOLO PRESENZE + COMPILAZIONE AUTOMATICA E PERSISTENTE DELLA MATRICE TESSERE
-    function elaboraLibroPresenze() {
+    async function elaboraLibroPresenze() {
       const fileInput = document.getElementById('presFile');
       if (!fileInput.files || !fileInput.files[0]) {
         alert("⚠️ Seleziona prima il file Excel/CSV delle presenze!");
@@ -719,7 +758,7 @@
       const annoSel = parseInt(document.getElementById('presAnno').value);
 
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         try {
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
@@ -727,12 +766,14 @@
           
           const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
-          const anagrafica = getDB("db_anagrafica");
+          const { data: anagrafica } = await _supabase.from('anagrafica').select('*');
           let conteggio = {};
           
-          anagrafica.forEach(d => {
-            if(d.diritto) conteggio[d.nome.toUpperCase().trim()] = 0;
-          });
+          if(anagrafica) {
+            anagrafica.forEach(d => {
+              if(d.diritto) conteggio[d.nome.toUpperCase().trim()] = 0;
+            });
+          }
 
           let currentEmp = null;
 
@@ -785,83 +826,73 @@
             `;
           });
 
-          // POPOLAMENTO AUTOMATICO E PERSISTENTE DELLA MATRICE TESSERE
-          let mat = getDB("db_matrice");
-          ultimiRisultatiCalcoloPresenze.forEach(res => {
-            let rowMat = mat.find(m => m.assegnato_a === res.nome && m.anno === annoSel);
-            if(rowMat) {
-              rowMat[meseSel.toLowerCase()] = res.ticket;
+          // AGGIORNAMENTO MATRICE SU SUPABASE
+          const { data: matCloud } = await _supabase.from('matrice_tessere').select('*').eq('anno', annoSel);
+          if (matCloud) {
+            for (let res of ultimiRisultatiCalcoloPresenze) {
+              let rowMat = matCloud.find(m => m.assegnato_a === res.nome);
+              if (rowMat) {
+                let datiM = rowMat.dati_mesi || {};
+                datiM[meseSel.toLowerCase()] = res.ticket;
+                await _supabase.from('matrice_tessere').update({ dati_mesi: datiM }).eq('id', rowMat.id);
+              }
             }
-          });
-          setDB("db_matrice", mat);
+          }
 
-          // SALVATAGGIO NELLO STORICO FILE
-          let storico = getDB("db_storico_presenze");
+          // AGGIORNAMENTO STORICO PRESENZE SU SUPABASE
           let dataOra = new Date().toLocaleDateString('it-IT') + " " + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
           
-          let recordStorico = {
-            id: String(Date.now()),
+          await _supabase.from('storico_presenze').upsert([{
             mese: meseSel,
             anno: annoSel,
-            fileName: fileObj.name,
-            fileSize: (fileObj.size / 1024).toFixed(1) + " KB",
-            dataUpload: dataOra,
+            file_name: fileObj.name,
+            file_size: (fileObj.size / 1024).toFixed(1) + " KB",
+            data_upload: dataOra,
             risultati: ultimiRisultatiCalcoloPresenze
-          };
+          }], { onConflict: 'mese,anno' });
 
-          let esistenteIdx = storico.findIndex(s => s.mese === meseSel && s.anno === annoSel);
-          if(esistenteIdx >= 0) {
-            storico[esistenteIdx] = recordStorico;
-          } else {
-            storico.push(recordStorico);
-          }
-          
-          setDB("db_storico_presenze", storico);
           renderStoricoPresenze();
           renderMatrice();
 
           document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
-          alert(`✅ Calcolo completato! La Matrice Tessere per ${meseSel.toUpperCase()} ${annoSel} è stata compilata e salvata automaticamente.`);
+          alert(`✅ Calcolo completato! La Matrice Tessere per ${meseSel.toUpperCase()} ${annoSel} è stata compilata e salvata nel Cloud.`);
         } catch (err) {
           console.error(err);
-          alert("❌ Errore durante la lettura del file Excel.");
+          alert("❌ Errore durante l'elaborazione su Supabase.");
         }
       };
       reader.readAsArrayBuffer(fileObj);
     }
 
-    function renderStoricoPresenze() {
+    async function renderStoricoPresenze() {
       const container = document.getElementById('storicoPresenzeList');
       if(!container) return;
-      const storico = getDB("db_storico_presenze");
+
+      const { data: storico } = await _supabase.from('storico_presenze').select('*').order('created_at', { ascending: false });
       container.innerHTML = "";
 
-      if(storico.length === 0) {
-        container.innerHTML = `<div class="p-3 bg-slate-50 text-slate-400 rounded-lg text-center border">Nessun file presenze ancora salvato nello storico.</div>`;
+      if(!storico || storico.length === 0) {
+        container.innerHTML = `<div class="p-3 bg-slate-50 text-slate-400 rounded-lg text-center border">Nessun file presenze ancora salvato nel cloud.</div>`;
         return;
       }
 
-      storico.forEach((s, idx) => {
+      storico.forEach((s) => {
         container.innerHTML += `
           <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
             <div>
               <p class="font-bold text-slate-800">📅 ${s.mese.toUpperCase()} ${s.anno}</p>
-              <p class="text-slate-500 text-[11px]">📄 File: <span class="font-semibold text-slate-700">${s.fileName}</span> (${s.fileSize}) — Caricato il ${s.dataUpload}</p>
+              <p class="text-slate-500 text-[11px]">📄 File: <span class="font-semibold text-slate-700">${s.file_name}</span> (${s.file_size}) — Caricato il ${s.data_upload}</p>
             </div>
-            <button type="button" onclick="mostraDettagliStorico(${idx})" class="stBtn px-3 py-1.5 text-xs font-semibold shadow-sm hover:border-red-500">🔍 Visualizza Dettagli Presenze File</button>
+            <button type="button" onclick='mostraDettagliStoricoObj(${JSON.stringify(s.risultati)})' class="stBtn px-3 py-1.5 text-xs font-semibold shadow-sm hover:border-red-500">🔍 Visualizza Dettagli Presenze File</button>
           </div>
         `;
       });
     }
 
-    function mostraDettagliStorico(idx) {
-      const storico = getDB("db_storico_presenze");
-      const item = storico[idx];
-      if (!item) return;
-
-      let msg = `📁 ARCHIVIO LIBRO PRESENZE\n--------------------------------\n• Periodo: ${item.mese.toUpperCase()} ${item.anno}\n• File: ${item.fileName} (${item.fileSize})\n• Caricato il: ${item.dataUpload}\n\nDETTAGLIO TICKET PER DIPENDENTE:\n`;
-      if (item.risultati && item.risultati.length > 0) {
-        item.risultati.forEach(r => {
+    function mostraDettagliStoricoObj(risultati) {
+      let msg = `📁 ARCHIVIO LIBRO PRESENZE (CLOUD)\n--------------------------------\n\nDETTAGLIO TICKET PER DIPENDENTE:\n`;
+      if (risultati && risultati.length > 0) {
+        risultati.forEach(r => {
           msg += `- ${r.nome}: ${r.ticket} ticket\n`;
         });
       } else {
@@ -870,43 +901,15 @@
       alert(msg);
     }
 
-    function renderMatrice() {
+    async function renderMatrice() {
       const tbody = document.getElementById('matriceTbody');
       const theadRow = document.getElementById('matriceTheadRow');
       const elAnno = document.getElementById('matriceAnno');
       if(!tbody || !theadRow || !elAnno) return;
 
       const anno = parseInt(elAnno.value);
-      const listaDipendenti = getDB("db_anagrafica");
-      let mat = getDB("db_matrice");
-
-      function getUltimoAssegnatarioValid(numTessera, targetAnno) {
-        for (let a = targetAnno - 1; a >= 2026; a--) {
-          let row = mat.find(m => m.numero_tessera === numTessera && m.anno === a);
-          if (row && row.assegnato_a) return row.assegnato_a;
-        }
-        return "";
-      }
-
-      let matAnno = mat.filter(m => m.anno === anno);
-      let mesiAnno = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
-      let tessereUniche = Array.from(new Set(mat.map(m => m.numero_tessera)));
-
-      tessereUniche.forEach(numTess => {
-        let rowCurr = matAnno.find(m => m.numero_tessera === numTess);
-        let ultimoNome = getUltimoAssegnatarioValid(numTess, anno);
-
-        if (!rowCurr) {
-          let newRow = { numero_tessera: numTess, assegnato_a: ultimoNome, anno: anno };
-          mesiAnno.forEach(m => newRow[m.toLowerCase()] = 0);
-          mat.push(newRow);
-        } else if (!rowCurr.assegnato_a && ultimoNome) {
-          rowCurr.assegnato_a = ultimoNome;
-        }
-      });
-
-      setDB("db_matrice", mat);
-      matAnno = mat.filter(m => m.anno === anno);
+      const { data: listaDipendenti } = await _supabase.from('anagrafica').select('*');
+      let { data: matCloud } = await _supabase.from('matrice_tessere').select('*').eq('anno', anno);
 
       const listaMesiTabella = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
 
@@ -919,24 +922,31 @@
       tbody.innerHTML = "";
       let tot = 0;
 
-      matAnno.forEach(r => {
-        let optionsDip = `<option value="">- Non Assegnato -</option>`;
-        listaDipendenti.forEach(dip => {
-          let selected = (r.assegnato_a === dip.nome) ? "selected" : "";
-          optionsDip += `<option value="${dip.nome}" ${selected}>${dip.nome}</option>`;
+      if (matCloud) {
+        matCloud.sort((a, b) => a.numero_tessera.localeCompare(b.numero_tessera));
+
+        matCloud.forEach(r => {
+          let optionsDip = `<option value="">- Non Assegnato -</option>`;
+          if(listaDipendenti) {
+            listaDipendenti.forEach(dip => {
+              let selected = (r.assegnato_a === dip.nome) ? "selected" : "";
+              optionsDip += `<option value="${dip.nome}" ${selected}>${dip.nome}</option>`;
+            });
+          }
+
+          let selectDipHtml = `<select data-id="${r.id}" data-tess="${r.numero_tessera}" data-field="assegnato_a" class="stInput px-2 py-1 w-full text-xs font-semibold text-slate-800 bg-transparent">${optionsDip}</select>`;
+          let datiM = r.dati_mesi || {};
+
+          let mCells = listaMesiTabella.map(m => {
+            let mKey = m.toLowerCase();
+            let val = datiM[mKey] || 0;
+            tot += val;
+            return `<td class="p-1 border-r text-center"><input type="number" min="0" value="${val}" data-id="${r.id}" data-tess="${r.numero_tessera}" data-mese="${mKey}" class="w-10 text-center border-none focus:ring-1 focus:ring-red-400 text-xs font-semibold"></td>`;
+          }).join('');
+
+          tbody.innerHTML += `<tr class="border-b hover:bg-slate-50/50"><td class="p-2.5 border-r font-medium text-slate-700">${r.numero_tessera}</td><td class="p-2.5 border-r">${selectDipHtml}</td>${mCells}</tr>`;
         });
-
-        let selectDipHtml = `<select data-tess="${r.numero_tessera}" data-field="assegnato_a" class="stInput px-2 py-1 w-full text-xs font-semibold text-slate-800 bg-transparent">${optionsDip}</select>`;
-
-        let mCells = listaMesiTabella.map(m => {
-          let mKey = m.toLowerCase();
-          let val = r[mKey] || 0;
-          tot += val;
-          return `<td class="p-1 border-r text-center"><input type="number" min="0" value="${val}" data-tess="${r.numero_tessera}" data-mese="${mKey}" class="w-10 text-center border-none focus:ring-1 focus:ring-red-400 text-xs font-semibold"></td>`;
-        }).join('');
-
-        tbody.innerHTML += `<tr class="border-b hover:bg-slate-50/50"><td class="p-2.5 border-r font-medium text-slate-700">${r.numero_tessera}</td><td class="p-2.5 border-r">${selectDipHtml}</td>${mCells}</tr>`;
-      });
+      }
 
       if(document.getElementById('labelTotTicket')) document.getElementById('labelTotTicket').textContent = `Totale Ticket Caricati (${anno})`;
       if(document.getElementById('labelTotValore')) document.getElementById('labelTotValore').textContent = `Valore Economico Totale (${anno})`;
@@ -944,74 +954,87 @@
       if(document.getElementById('totValoreMatrice')) document.getElementById('totValoreMatrice').textContent = "€ " + (tot * 5.20).toFixed(2).replace('.', ',');
     }
 
-    function salvaMatriceTessere() {
+    async function salvaMatriceTessere() {
       const annoCorrente = parseInt(document.getElementById('matriceAnno').value);
-      let mat = getDB("db_matrice");
+
+      const rowsMap = {};
 
       document.querySelectorAll('#matriceTbody select, #matriceTbody input').forEach(el => {
+        let rowId = el.getAttribute('data-id');
         let tess = el.getAttribute('data-tess');
         let mese = el.getAttribute('data-mese');
         let field = el.getAttribute('data-field');
 
-        let rowCorrente = mat.find(m => m.numero_tessera === tess && m.anno === annoCorrente);
-        if(rowCorrente) {
-          if(mese) rowCorrente[mese] = parseInt(el.value) || 0;
-          if(field) {
-            rowCorrente[field] = el.value;
+        if (!rowsMap[rowId]) {
+          rowsMap[rowId] = { id: rowId, tessera: tess, assegnato_a: null, dati_mesi: {} };
+        }
 
-            for(let a = annoCorrente; a <= 2060; a++) {
-              let rowAnnoFuturo = mat.find(m => m.numero_tessera === tess && m.anno === a);
-              if(rowAnnoFuturo) {
-                rowAnnoFuturo[field] = el.value;
-              } else {
-                let mesiAnno = (a === 2026) ? MESI_2026 : MESI_TUTTI;
-                let newRow = { numero_tessera: tess, assegnato_a: el.value, anno: a };
-                mesiAnno.forEach(m => newRow[m.toLowerCase()] = 0);
-                mat.push(newRow);
-              }
-            }
-          }
+        if (field === 'assegnato_a') {
+          rowsMap[rowId].assegnato_a = el.value;
+        }
+
+        if (mese) {
+          rowsMap[rowId].dati_mesi[mese] = parseInt(el.value) || 0;
         }
       });
 
-      setDB("db_matrice", mat);
-      alert(`✅ Salvo modifiche! Le assegnazioni sono state applicate dal ${annoCorrente} a tutti gli anni futuri.`);
-      renderMatrice();
-    }
+      try {
+        for (let rowId in rowsMap) {
+          let item = rowsMap[rowId];
 
-    function addNuovaTesseraPrompt() {
-      let num = prompt("Inserisci Numero Nuova Tessera:");
-      if(num) {
-        let mat = getDB("db_matrice");
-        let annoCorrente = parseInt(document.getElementById('matriceAnno').value);
+          const { data: currentRecord } = await _supabase.from('matrice_tessere').select('dati_mesi').eq('id', rowId).single();
+          let updatedDatiMesi = Object.assign({}, currentRecord ? currentRecord.dati_mesi : {}, item.dati_mesi);
 
-        for(let a = annoCorrente; a <= 2060; a++) {
-          let listaMesiTabella = (a === 2026) ? MESI_2026 : MESI_TUTTI;
-          let rowGiàPresente = mat.find(m => m.numero_tessera === num && m.anno === a);
+          await _supabase.from('matrice_tessere').update({
+            assegnato_a: item.assegnato_a,
+            dati_mesi: updatedDatiMesi
+          }).eq('id', rowId);
 
-          if(!rowGiàPresente) {
-            let r = { numero_tessera: num, assegnato_a: "", anno: a };
-            listaMesiTabella.forEach(m => r[m.toLowerCase()] = 0);
-            mat.push(r);
+          // Propagazione assegnazione anni futuri
+          if (item.assegnato_a) {
+            for (let a = annoCorrente + 1; a <= 2060; a++) {
+              await _supabase.from('matrice_tessere').upsert([{
+                numero_tessera: item.tessera,
+                assegnato_a: item.assegnato_a,
+                anno: a
+              }], { onConflict: 'numero_tessera,anno' });
+            }
           }
         }
 
-        setDB("db_matrice", mat);
+        alert(`✅ Modifiche salvate su Cloud! Assegnazioni propagate dal ${annoCorrente} agli anni futuri.`);
+        renderMatrice();
+      } catch (err) {
+        alert("❌ Errore durante il salvataggio della matrice: " + err.message);
+      }
+    }
+
+    async function addNuovaTesseraPrompt() {
+      let num = prompt("Inserisci Numero Nuova Tessera:");
+      if(num) {
+        let annoCorrente = parseInt(document.getElementById('matriceAnno').value);
+        let rows = [];
+
+        for(let a = annoCorrente; a <= 2060; a++) {
+          rows.push({ numero_tessera: num, assegnato_a: "", anno: a, dati_mesi: {} });
+        }
+
+        await _supabase.from('matrice_tessere').upsert(rows, { onConflict: 'numero_tessera,anno' });
         renderMatrice();
       }
     }
 
-    function renderAnagrafica() {
+    async function renderAnagrafica() {
       const tbody = document.getElementById('anagraficaTbody');
       const select = document.getElementById('selectDipendenteRimuovere');
       if(!tbody || !select) return;
 
-      const list = getDB("db_anagrafica");
+      const { data: list } = await _supabase.from('anagrafica').select('*').order('nome', { ascending: true });
 
       tbody.innerHTML = "";
       select.innerHTML = "";
 
-      if(list.length === 0) {
+      if(!list || list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">Nessun dipendente registrato.</td></tr>`;
         select.innerHTML = `<option value="">Nessun dipendente presente</option>`;
         return;
@@ -1028,20 +1051,18 @@
             <td class="p-2.5 text-slate-500">${dip.note || ''}</td>
           </tr>
         `;
-        select.innerHTML += `<option value="${idx}">${dip.nome}</option>`;
+        select.innerHTML += `<option value="${dip.id}">${dip.nome}</option>`;
       });
     }
 
-    function salvaDipendenteAnagrafica(e) {
+    async function salvaDipendenteAnagrafica(e) {
       e.preventDefault();
       const nome = document.getElementById('anagNome').value.trim();
       const diritto = document.getElementById('anagDiritto').checked;
       const note = document.getElementById('anagNote').value.trim();
       if(!nome) return;
 
-      let list = getDB("db_anagrafica");
-      list.push({ nome: nome.toUpperCase(), diritto: diritto, note: note });
-      setDB("db_anagrafica", list);
+      await _supabase.from('anagrafica').upsert([{ nome: nome.toUpperCase(), diritto: diritto, note: note }], { onConflict: 'nome' });
 
       document.getElementById('anagNome').value = "";
       document.getElementById('anagNote').value = "";
@@ -1049,22 +1070,20 @@
       renderMatrice();
     }
 
-    function confermaRimuoviDipendente() {
+    async function confermaRimuoviDipendente() {
       const select = document.getElementById('selectDipendenteRimuovere');
-      const idx = select.value;
-      if(idx === "" || idx === null) return;
+      const id = select.value;
+      if(!id) return;
 
-      let list = getDB("db_anagrafica");
-      const nomeRimosso = list[idx].nome;
-      list.splice(idx, 1);
-      setDB("db_anagrafica", list);
-
-      alert(`✅ Dipendente "${nomeRimosso}" rimosso con successo dall'anagrafica!`);
-      renderAnagrafica();
-      renderMatrice();
+      if(confirm("Sei sicuro di voler rimuovere questo dipendente dall'Anagrafica Cloud?")) {
+        await _supabase.from('anagrafica').delete().eq('id', id);
+        alert(`✅ Dipendente rimosso con successo dal Cloud!`);
+        renderAnagrafica();
+        renderMatrice();
+      }
     }
 
-    function salvaOrdineMagazzino() {
+    async function salvaOrdineMagazzino() {
       const elFattura = document.getElementById('ordFattura');
       const fatturaInput = elFattura ? elFattura.value.trim() : "";
       if(!fatturaInput) {
@@ -1072,10 +1091,7 @@
         return;
       }
 
-      let ordini = getDB("db_ordini");
-
       let nuovoOrdine = {
-        id: String(Date.now()),
         fattura: fatturaInput,
         erogati_iniziali: parseInt(document.getElementById('erogatiIniziali') ? document.getElementById('erogatiIniziali').value : 0) || 0,
         valore: document.getElementById('valoreTicket') ? document.getElementById('valoreTicket').value : "5,20",
@@ -1083,10 +1099,9 @@
         acquistati: parseInt(document.getElementById('quantitaAcquistati') ? document.getElementById('quantitaAcquistati').value : 1000) || 1000
       };
 
-      ordini.push(nuovoOrdine);
-      setDB("db_ordini", ordini);
+      await _supabase.from('ordini').insert([nuovoOrdine]);
 
-      alert("✅ Nuovo Ordine/Fattura salvato con successo nel Magazzino!");
+      alert("✅ Nuovo Ordine/Fattura salvato con successo nel Magazzino Cloud!");
 
       const form = document.getElementById('formNuovoOrdine');
       if(form) form.reset();
@@ -1097,31 +1112,31 @@
       renderRichiesteHR();
     }
 
-    function eliminaOrdine(id) {
-      if(confirm("Sei sicuro di voler eliminare questo ordine?")) {
-        let ordini = getDB("db_ordini").filter(o => String(o.id) !== String(id));
-        setDB("db_ordini", ordini);
+    async function eliminaOrdine(id) {
+      if(confirm("Sei sicuro di voler eliminare questo ordine dal cloud?")) {
+        await _supabase.from('ordini').delete().eq('id', id);
         renderHRMagazzino();
         renderRichiesteHR();
       }
     }
 
-    function renderHRMagazzino() {
+    async function renderHRMagazzino() {
       if(!isHrAuthenticated) return;
       const ordiniTbody = document.getElementById('ordiniTbody');
       if(!ordiniTbody) return;
-      const ordini = getDB("db_ordini");
-      const reqs = getDB("db_richieste").filter(r => r.stato === 'Pronti');
+
+      const { data: ordini } = await _supabase.from('ordini').select('*').order('created_at', { ascending: true });
+      const { data: reqs } = await _supabase.from('richieste').select('*').eq('stato', 'Pronti');
 
       ordiniTbody.innerHTML = "";
 
-      if(ordini.length === 0) {
-        ordiniTbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">Nessun ordine registrato.</td></tr>`;
+      if(!ordini || ordini.length === 0) {
+        ordiniTbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">Nessun ordine registrato nel cloud.</td></tr>`;
         return;
       }
 
       ordini.forEach(o => {
-        let erogatiRichieste = reqs.filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + (r.num_ticket || 1), 0);
+        let erogatiRichieste = (reqs || []).filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + (r.num_ticket || 1), 0);
         let erogatiTotali = (o.erogati_iniziali || 0) + erogatiRichieste;
         let residuoTotale = Math.max(0, ((o.acquistati || 0) + (o.residuo_precedente || 0)) - erogatiTotali);
 
@@ -1133,7 +1148,7 @@
             <td class="p-2.5 text-amber-600 font-semibold">${erogatiTotali}</td>
             <td class="p-2.5">${o.residuo_precedente || 0}</td>
             <td class="p-2.5 text-emerald-600 font-bold">${residuoTotale}</td>
-            <td class="p-2.5"><button type="button" onclick="eliminaOrdine('${String(o.id)}')" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
+            <td class="p-2.5"><button type="button" onclick="eliminaOrdine('${r.id}')" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
           </tr>
         `;
       });

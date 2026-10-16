@@ -213,11 +213,11 @@
             </div>
           </div>
 
-          <!-- SUB B: PRESENZE -->
+          <!-- SUB B: PRESENZE & STORICO -->
           <div id="subTabB" class="hidden space-y-4 w-full">
             <div class="stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs text-slate-800">📄 Upload Nuovo Libro Presenze Mensile (Colonna AQ)</h4>
-              <p class="text-xs text-slate-500">Vengono letti i giorni effettivamente lavorati per le causali <b>PREORD</b> e <b>SMARTW</b> dai dipendenti abilitati nell'anagrafica.</p>
+              <p class="text-xs text-slate-500">Viene letto direttamente il conteggio giorni riportato in <b>Colonna AQ</b> per le causali <b>PREORD</b> e <b>SMARTW</b> dai dipendenti abilitati.</p>
               <div class="grid grid-cols-3 gap-4">
                 <div>
                   <label class="block text-xs font-semibold mb-1">Mese Presenze:</label>
@@ -237,12 +237,12 @@
 
             <div id="risultatiPresenzeBox" class="hidden stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs">🧮 Risultati Calcolo Spettanze Ticket</h4>
-              <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket (PREORD + SMARTW)</th><th class="p-2">Valore (€)</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
+              <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket AQ (PREORD + SMARTW)</th><th class="p-2">Valore (€)</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
               <button type="button" onclick="popolaMatriceDaPresenze()" class="bg-red-500 text-white px-4 py-2 rounded-md text-xs font-semibold">⚡ Applica e Popola Matrice Tessere</button>
             </div>
 
             <div class="stCard p-6 space-y-3 w-full">
-              <h4 class="font-bold text-xs">📚 Archivio e Storico Libri Presenze</h4>
+              <h4 class="font-bold text-xs">📚 Archivio Storico Libri Presenze Caricati</h4>
               <div id="storicoPresenzeList" class="text-xs space-y-2"></div>
             </div>
           </div>
@@ -422,6 +422,7 @@
     const PASSWORD_HR = "pallinerosa26!";
     let isHrAuthenticated = false;
     let ultimiRisultatiCalcoloPresenze = [];
+    let fileCaricatoCorrenteNome = "";
 
     const MESI_2026 = ["Ottobre", "Novembre", "Dicembre"];
     const MESI_TUTTI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
@@ -638,9 +639,8 @@
       const filtro = filtroEl ? filtroEl.value : 'Tutti';
 
       container.innerHTML = "";
-      const list = reqs.filter(r => filtro === 'Tutti' || r.stato === filtro);
 
-      if(list.length === 0) {
+      if(reqs.length === 0) {
         container.innerHTML = `<div class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-4">Nessuna richiesta ricevuta al momento.</div>`;
         return;
       }
@@ -653,13 +653,13 @@
           <div class="stCard p-4 bg-white space-y-3 text-xs w-full">
             <div class="flex justify-between items-center font-bold">
               <span>${r.nome_cognome} — <span class="${isPronto ? 'text-emerald-600':'text-amber-600'}">${isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE'}</span></span>
-              <button type="button" onclick="eliminaRichiesta(${idx})" class="text-red-500 hover:underline">🗑️ Elimina</button>
+              <button type="button" data-del-idx="${idx}" class="btn-elimina-req text-red-500 hover:underline">🗑️ Elimina</button>
             </div>
             <div class="text-slate-600"><b>Email:</b> ${r.email || 'N/A'} | <b>Periodo:</b> ${r.mese || ''} ${r.anno || ''} | <b>N° Ticket:</b> ${r.num_ticket || 1}</div>
             <div class="flex items-center gap-4 pt-1">
               ${r.file_url && r.file_url !== '#' ? `<a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>` : ''}
               ${!isPronto ? `
-                <button type="button" onclick="segnaPronto(\${idx})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition shadow-sm cursor-pointer">Segna come PRONTI 🚀</button>
+                <button type="button" data-req-idx="\${idx}" class="btn-segna-pronto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition shadow-sm cursor-pointer">Segna come PRONTI 🚀</button>
               ` : `<span class="text-xs text-emerald-700 font-semibold">Associato all'Ordine: \${r.ordine_fattura || 'N/A'}</span>`}
             </div>
           </div>
@@ -667,42 +667,54 @@
       });
     }
 
-    function segnaPronto(idx) {
-      let ordini = getDB("db_ordini");
-      if (!ordini || ordini.length === 0) {
-        ordini = [{ id: "1", fattura: "ORD-2026-01", acquistati: 1000, erogati_iniziali: 0, valore: "5,20", residuo_precedente: 0 }];
-        setDB("db_ordini", ordini);
-      }
+    // GESTIONE DELEGATA DEI CLICK DEI PULSANTI
+    document.addEventListener('click', function(e) {
+      const btnPronto = e.target.closest('.btn-segna-pronto');
+      if (btnPronto) {
+        let idx = parseInt(btnPronto.getAttribute('data-req-idx'));
+        let ordini = getDB("db_ordini");
 
-      let ultimoOrdine = ordini[ordini.length - 1].fattura;
-      let reqs = getDB("db_richieste");
-      if (reqs[idx]) {
-        reqs[idx].stato = "Pronti";
-        reqs[idx].ordine_fattura = ultimoOrdine;
-        setDB("db_richieste", reqs);
-        alert("✅ Stato aggiornato a PRONTI! Scalato dall'ordine: " + ultimoOrdine);
-        renderRichiesteHR();
-        renderHRMagazzino();
-      }
-    }
+        if (!ordini || ordini.length === 0) {
+          ordini = [{ id: "1", fattura: "ORD-2026-01", acquistati: 1000, erogati_iniziali: 0, valore: "5,20", residuo_precedente: 0 }];
+          setDB("db_ordini", ordini);
+        }
 
-    function eliminaRichiesta(idx) {
-      if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {
+        let ultimoOrdine = ordini[ordini.length - 1].fattura;
         let reqs = getDB("db_richieste");
-        reqs.splice(idx, 1);
-        setDB("db_richieste", reqs);
-        renderRichiesteHR();
-        renderHRMagazzino();
-      }
-    }
 
-    // NUOVA FUNZIONE CORRETTA: CONTA LE CELLE COMPILATE NELLE COLONNE DEI GIORNI PER PREORD E SMARTW
+        if (reqs[idx] !== undefined) {
+          reqs[idx].stato = "Pronti";
+          reqs[idx].ordine_fattura = ultimoOrdine;
+          setDB("db_richieste", reqs);
+          alert("✅ Stato aggiornato a PRONTI! Scalato dall'ordine: " + ultimoOrdine);
+          renderRichiesteHR();
+          renderHRMagazzino();
+        }
+      }
+
+      const btnDel = e.target.closest('.btn-elimina-req');
+      if (btnDel) {
+        if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {
+          let idx = parseInt(btnDel.getAttribute('data-del-idx'));
+          let reqs = getDB("db_richieste");
+          reqs.splice(idx, 1);
+          setDB("db_richieste", reqs);
+          renderRichiesteHR();
+          renderHRMagazzino();
+        }
+      }
+    });
+
+    // LETTURA ESATTA E DIRETTA DELLA COLONNA AQ (INDICE 42) DAL FILE EXCEL
     function elaboraLibroPresenze() {
       const fileInput = document.getElementById('presFile');
       if (!fileInput.files || !fileInput.files[0]) {
         alert("⚠️ Seleziona prima il file Excel/CSV delle presenze!");
         return;
       }
+
+      const fileObj = fileInput.files[0];
+      fileCaricatoCorrenteNome = fileObj.name;
 
       const reader = new FileReader();
       reader.onload = function(e) {
@@ -726,8 +738,9 @@
 
             let col6 = row[6] ? String(row[6]).trim().toUpperCase() : "";
             let col1 = row[1] ? String(row[1]).trim().toUpperCase() : "";
+            let valAQ = row[42] !== undefined && row[42] !== null ? parseFloat(row[42]) : 0;
 
-            // Riconosce il dipendente
+            // Identifica il nome del dipendente
             if (col6 && !col6.includes("RIEPILOGO") && !col6.includes("STAMPA") && !col6.includes("FILTRATO") && !col6.includes("DAL:")) {
               let nomePulito = col6;
               if (col6.includes(" - ")) {
@@ -743,15 +756,11 @@
               });
             }
 
-            // Conta i giorni lavorati (celle compilate tra le colonne G ed AK, indici 6..36)
+            // Legge il valore numerico esatto riportato nella Colonna AQ (index 42) per PREORD e SMARTW
             if (currentEmp && (col1 === "PREORD" || col1 === "SMARTW")) {
-              let giornilavorati = 0;
-              for (let c = 6; c <= 36; c++) {
-                if (row[c] !== undefined && row[c] !== null && String(row[c]).trim() !== "") {
-                  giornilavorati++;
-                }
+              if (!isNaN(valAQ) && valAQ > 0) {
+                conteggio[currentEmp] += valAQ;
               }
-              conteggio[currentEmp] += giornilavorati;
             }
           });
 
@@ -773,13 +782,13 @@
           });
 
           document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
-          alert("✅ Calcolo presenze completato con successo!");
+          alert("✅ Calcolo completato con successo leggendo la colonna AQ!");
         } catch (err) {
           console.error(err);
           alert("❌ Errore durante la lettura del file Excel.");
         }
       };
-      reader.readAsArrayBuffer(fileInput.files[0]);
+      reader.readAsArrayBuffer(fileObj);
     }
 
     function popolaMatriceDaPresenze() {
@@ -798,11 +807,18 @@
 
       setDB("db_matrice", mat);
 
+      // Salva nell'archivio storico con il nome del file caricato
       let storico = getDB("db_storico_presenze");
-      storico.push({ id: String(Date.now()), mese: mese, anno: anno, data: new Date().toLocaleDateString('it-IT') });
+      storico.push({
+        id: String(Date.now()),
+        mese: mese,
+        anno: anno,
+        fileName: fileCaricatoCorrenteNome || "HQE - libropresenze.xls",
+        dataUpload: new Date().toLocaleDateString('it-IT') + " " + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})
+      });
       setDB("db_storico_presenze", storico);
 
-      alert(`⚡ Matrice tessere popolata con successo per il mese di ${mese.toUpperCase()} ${anno}!`);
+      alert(`⚡ Matrice tessere popolata con successo per ${mese.toUpperCase()} ${anno}!`);
       renderStoricoPresenze();
       renderMatrice();
     }
@@ -814,15 +830,18 @@
       container.innerHTML = "";
 
       if(storico.length === 0) {
-        container.innerHTML = `<span class="text-slate-400">Nessun file presenze elaborato.</span>`;
+        container.innerHTML = `<span class="text-slate-400">Nessun file presenze ancora archiviato.</span>`;
         return;
       }
 
       storico.forEach(s => {
         container.innerHTML += `
-          <div class="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-200">
-            <span>📅 Mese Presenze: <b>${s.mese.toUpperCase()} ${s.anno}</b> (Elaborato il ${s.data})</span>
-            <span class="text-emerald-600 font-bold">✓ Applicato in Matrice</span>
+          <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <div>
+              <p class="font-bold text-slate-800">📅 Periodo: ${s.mese.toUpperCase()} ${s.anno}</p>
+              <p class="text-slate-500 text-[11px]">📄 File Caricato: <span class="font-semibold text-slate-700">${s.fileName}</span> (${s.dataUpload})</p>
+            </div>
+            <span class="text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">✓ Applicato in Matrice</span>
           </div>
         `;
       });

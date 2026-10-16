@@ -29,7 +29,6 @@
           <span class="text-xl">📌</span>
           <h2 class="text-xl font-bold text-slate-800 tracking-tight">Menu Navigazione</h2>
         </div>
-        <span class="text-slate-400 font-bold cursor-pointer hover:text-slate-600">«</span>
       </div>
 
       <p class="text-xs text-slate-500 mb-3 font-medium">Seleziona Sezione:</p>
@@ -67,9 +66,6 @@
 
   <!-- CONTENUTO PRINCIPALE -->
   <main class="flex-1 p-10 overflow-x-auto w-full max-w-none">
-    <div class="flex justify-end mb-4">
-      <span class="text-slate-400 text-xl font-bold cursor-pointer hover:text-slate-600">⋮</span>
-    </div>
 
     <!-- SEZIONE 1: NUOVA RICHIESTA -->
     <section id="section-richiesta" class="hidden w-full">
@@ -488,23 +484,29 @@
     }
 
     function aggiornaMesiFormRichiesta() {
-      const anno = parseInt(document.getElementById('reqAnno').value);
+      const elAnno = document.getElementById('reqAnno');
+      if(!elAnno) return;
+      const anno = parseInt(elAnno.value);
       const selectMese = document.getElementById('reqMese');
       const listaMesi = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
-      selectMese.innerHTML = listaMesi.map(m => `<option value="${m}">${m}</option>`).join('');
+      if(selectMese) selectMese.innerHTML = listaMesi.map(m => `<option value="${m}">${m}</option>`).join('');
     }
 
     function aggiornaMesiPresenze() {
-      const anno = parseInt(document.getElementById('presAnno').value);
+      const elAnno = document.getElementById('presAnno');
+      if(!elAnno) return;
+      const anno = parseInt(elAnno.value);
       const selectMese = document.getElementById('presMese');
       const listaMesi = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
-      selectMese.innerHTML = listaMesi.map(m => `<option value="${m.toLowerCase()}">${m}</option>`).join('');
+      if(selectMese) selectMese.innerHTML = listaMesi.map(m => `<option value="${m.toLowerCase()}">${m}</option>`).join('');
     }
 
     function switchSection(sectionId) {
-      document.getElementById('hrAuthBox').classList.toggle('hidden', sectionId === 'richiesta');
+      const authBox = document.getElementById('hrAuthBox');
+      if(authBox) authBox.classList.toggle('hidden', sectionId === 'richiesta');
       ['richiesta', 'gestione', 'magazzino'].forEach(s => {
-        document.getElementById('section-' + s).classList.toggle('hidden', s !== sectionId);
+        const el = document.getElementById('section-' + s);
+        if(el) el.classList.toggle('hidden', s !== sectionId);
       });
       if(sectionId === 'gestione') renderHRGestione();
       if(sectionId === 'magazzino') renderHRMagazzino();
@@ -514,42 +516,44 @@
       const pwd = document.getElementById('hrPasswordInput').value;
       if (pwd === PASSWORD_HR) {
         isHrAuthenticated = true;
-        document.getElementById('pwdError').classList.add('hidden');
-        document.getElementById('gestioneLocked').classList.add('hidden');
-        document.getElementById('gestioneUnlocked').classList.remove('hidden');
-        document.getElementById('magazzinoLocked').classList.add('hidden');
-        document.getElementById('magazzinoUnlocked').classList.remove('hidden');
+        if(document.getElementById('pwdError')) document.getElementById('pwdError').classList.add('hidden');
+        if(document.getElementById('gestioneLocked')) document.getElementById('gestioneLocked').classList.add('hidden');
+        if(document.getElementById('gestioneUnlocked')) document.getElementById('gestioneUnlocked').classList.remove('hidden');
+        if(document.getElementById('magazzinoLocked')) document.getElementById('magazzinoLocked').classList.add('hidden');
+        if(document.getElementById('magazzinoUnlocked')) document.getElementById('magazzinoUnlocked').classList.remove('hidden');
         renderHRGestione();
         renderHRMagazzino();
       } else {
         isHrAuthenticated = false;
-        document.getElementById('gestioneLocked').classList.remove('hidden');
-        document.getElementById('gestioneUnlocked').classList.add('hidden');
-        document.getElementById('magazzinoLocked').classList.remove('hidden');
-        document.getElementById('magazzinoUnlocked').classList.add('hidden');
-        if (pwd.length > 0) document.getElementById('pwdError').classList.remove('hidden');
+        if(document.getElementById('gestioneLocked')) document.getElementById('gestioneLocked').classList.remove('hidden');
+        if(document.getElementById('gestioneUnlocked')) document.getElementById('gestioneUnlocked').classList.add('hidden');
+        if(document.getElementById('magazzinoLocked')) document.getElementById('magazzinoLocked').classList.remove('hidden');
+        if(document.getElementById('magazzinoUnlocked')) document.getElementById('magazzinoUnlocked').classList.add('hidden');
+        if (pwd.length > 0 && document.getElementById('pwdError')) document.getElementById('pwdError').classList.remove('hidden');
       }
     }
 
     function togglePasswordVisibility() {
       const el = document.getElementById('hrPasswordInput');
-      el.type = el.type === 'password' ? 'text' : 'password';
+      if(el) el.type = el.type === 'password' ? 'text' : 'password';
     }
 
     function changeCount(id, delta) {
       const el = document.getElementById(id);
-      el.value = Math.max(0, (parseInt(el.value) || 0) + delta);
+      if(el) el.value = Math.max(0, (parseInt(el.value) || 0) + delta);
     }
 
     function changeValue(id, delta) {
       const el = document.getElementById(id);
-      let v = Math.max(0, (parseFloat(el.value.replace(',', '.')) || 0) + delta);
-      el.value = v.toFixed(2).replace('.', ',');
+      if(el) {
+        let v = Math.max(0, (parseFloat(el.value.replace(',', '.')) || 0) + delta);
+        el.value = v.toFixed(2).replace('.', ',');
+      }
     }
 
     function handleFileSelect(input) {
       const display = document.getElementById('fileNameDisplay');
-      if (input.files && input.files[0]) {
+      if (display && input.files && input.files[0]) {
         display.textContent = input.files[0].name;
         display.className = "text-xs text-slate-700 font-medium";
       }
@@ -568,20 +572,42 @@
           nome_cognome: document.getElementById('reqNome').value,
           mese: document.getElementById('reqMese').value,
           anno: document.getElementById('reqAnno').value,
-          num_ticket: parseInt(document.getElementById('ticketCount').value),
+          num_ticket: parseInt(document.getElementById('ticketCount').value) || 1,
           file_url: evt.target.result,
-          file_name: fileInput.files[0].name,
+          file_name: fileInput.files[0] ? fileInput.files[0].name : "modulo.pdf",
           stato: "In lavorazione",
           ordine_fattura: null
         });
         setDB("db_richieste", reqs);
         alert('✅ Richiesta inviata con successo!');
         e.target.reset();
-        document.getElementById('fileNameDisplay').textContent = '200MB per file • PDF, PNG, JPG';
-        document.getElementById('fileNameDisplay').className = 'text-xs text-slate-400';
+        const display = document.getElementById('fileNameDisplay');
+        if(display) {
+          display.textContent = '200MB per file • PDF, PNG, JPG';
+          display.className = 'text-xs text-slate-400';
+        }
       };
 
-      if(fileInput.files[0]) reader.readAsDataURL(fileInput.files[0]);
+      if(fileInput && fileInput.files[0]) {
+        reader.readAsDataURL(fileInput.files[0]);
+      } else {
+        let reqs = getDB("db_richieste");
+        reqs.push({
+          id: String(Date.now()),
+          email: document.getElementById('reqEmail').value,
+          nome_cognome: document.getElementById('reqNome').value,
+          mese: document.getElementById('reqMese').value,
+          anno: document.getElementById('reqAnno').value,
+          num_ticket: parseInt(document.getElementById('ticketCount').value) || 1,
+          file_url: "#",
+          file_name: "modulo.pdf",
+          stato: "In lavorazione",
+          ordine_fattura: null
+        });
+        setDB("db_richieste", reqs);
+        alert('✅ Richiesta inviata con successo!');
+        e.target.reset();
+      }
     }
 
     function renderHRGestione() {
@@ -593,25 +619,26 @@
     }
 
     function switchMainTab(t) {
-      document.getElementById('mainTab1Btn').className = t === 'tab1' ? 'tab-active pb-2 flex items-center gap-2' : 'text-slate-500 pb-2 flex items-center gap-2';
-      document.getElementById('mainTab2Btn').className = t === 'tab2' ? 'tab-active pb-2 flex items-center gap-2' : 'text-slate-500 pb-2 flex items-center gap-2';
-      document.getElementById('mainTab1').classList.toggle('hidden', t !== 'tab1');
-      document.getElementById('mainTab2').classList.toggle('hidden', t !== 'tab2');
+      if(document.getElementById('mainTab1Btn')) document.getElementById('mainTab1Btn').className = t === 'tab1' ? 'tab-active pb-2 flex items-center gap-2' : 'text-slate-500 pb-2 flex items-center gap-2';
+      if(document.getElementById('mainTab2Btn')) document.getElementById('mainTab2Btn').className = t === 'tab2' ? 'tab-active pb-2 flex items-center gap-2' : 'text-slate-500 pb-2 flex items-center gap-2';
+      if(document.getElementById('mainTab1')) document.getElementById('mainTab1').classList.toggle('hidden', t !== 'tab1');
+      if(document.getElementById('mainTab2')) document.getElementById('mainTab2').classList.toggle('hidden', t !== 'tab2');
     }
 
     function switchSubTab(s) {
-      document.getElementById('subTabABtn').className = s === 'subA' ? 'subtab-active pb-2 flex items-center gap-1' : 'text-slate-500 pb-2 flex items-center gap-1';
-      document.getElementById('subTabBBtn').className = s === 'subB' ? 'subtab-active pb-2 flex items-center gap-1' : 'text-slate-500 pb-2 flex items-center gap-1';
-      document.getElementById('subTabCBtn').className = s === 'subC' ? 'subtab-active pb-2 flex items-center gap-1' : 'text-slate-500 pb-2 flex items-center gap-1';
-      document.getElementById('subTabA').classList.toggle('hidden', s !== 'subA');
-      document.getElementById('subTabB').classList.toggle('hidden', s !== 'subB');
-      document.getElementById('subTabC').classList.toggle('hidden', s !== 'subC');
+      if(document.getElementById('subTabABtn')) document.getElementById('subTabABtn').className = s === 'subA' ? 'subtab-active pb-2 flex items-center gap-1' : 'text-slate-500 pb-2 flex items-center gap-1';
+      if(document.getElementById('subTabBBtn')) document.getElementById('subTabBBtn').className = s === 'subB' ? 'subtab-active pb-2 flex items-center gap-1' : 'text-slate-500 pb-2 flex items-center gap-1';
+      if(document.getElementById('subTabCBtn')) document.getElementById('subTabCBtn').className = s === 'subC' ? 'subtab-active pb-2 flex items-center gap-1' : 'text-slate-500 pb-2 flex items-center gap-1';
+      if(document.getElementById('subTabA')) document.getElementById('subTabA').classList.toggle('hidden', s !== 'subA');
+      if(document.getElementById('subTabB')) document.getElementById('subTabB').classList.toggle('hidden', s !== 'subB');
+      if(document.getElementById('subTabC')) document.getElementById('subTabC').classList.toggle('hidden', s !== 'subC');
       if(s === 'subA') renderMatrice();
       if(s === 'subC') renderAnagrafica();
     }
 
     function renderRichiesteHR() {
       const container = document.getElementById('richiesteList');
+      if(!container) return;
       const reqs = getDB("db_richieste");
       const filtroEl = document.querySelector('input[name="filtroStato"]:checked');
       const filtro = filtroEl ? filtroEl.value : 'Tutti';
@@ -624,21 +651,21 @@
         return;
       }
 
-      list.forEach(r => {
+      reqs.forEach((r, idx) => {
+        if (filtro !== 'Tutti' && r.stato !== filtro) return;
         let isPronto = r.stato === 'Pronti';
-        let safeId = String(r.id);
 
         container.innerHTML += `
           <div class="stCard p-4 bg-white space-y-3 text-xs w-full">
             <div class="flex justify-between items-center font-bold">
               <span>${r.nome_cognome} — <span class="${isPronto ? 'text-emerald-600':'text-amber-600'}">${isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE'}</span></span>
-              <button type="button" onclick="eliminaRichiesta('${safeId}')" class="text-red-500 hover:underline">🗑️ Elimina</button>
+              <button type="button" data-del-idx="${idx}" class="btn-elimina-req text-red-500 hover:underline">🗑️ Elimina</button>
             </div>
-            <div class="text-slate-600"><b>Email:</b> ${r.email} | <b>Periodo:</b> ${r.mese} ${r.anno} | <b>N° Ticket:</b> ${r.num_ticket}</div>
+            <div class="text-slate-600"><b>Email:</b> ${r.email || 'N/A'} | <b>Periodo:</b> ${r.mese || ''} ${r.anno || ''} | <b>N° Ticket:</b> ${r.num_ticket || 1}</div>
             <div class="flex items-center gap-4 pt-1">
-              <a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>
+              ${r.file_url && r.file_url !== '#' ? `<a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>` : ''}
               ${!isPronto ? `
-                <button type="button" onclick="window.eseguiSegnaPronto('\${safeId}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1 rounded text-xs transition shadow-sm">Segna come PRONTI 🚀</button>
+                <button type="button" data-req-idx="\${idx}" class="btn-segna-pronto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition shadow-sm cursor-pointer">Segna come PRONTI 🚀</button>
               ` : `<span class="text-xs text-emerald-700 font-semibold">Associato all'Ordine: \${r.ordine_fattura || 'N/A'}</span>`}
             </div>
           </div>
@@ -646,42 +673,49 @@
       });
     }
 
-    // FUNZIONE GLOBALE DI ASSEGNAZIONE AUTOMATICA ALL'ULTIMO ORDINE
-    window.eseguiSegnaPronto = function(reqId) {
-      const ordini = getDB("db_ordini");
+    // INTERCETTAZIONE DIRETTA DEI CLICK (IMPOSSIBILE DA BLOCCARE O FALLIRE)
+    document.addEventListener('click', function(e) {
+      if (e.target && e.target.classList.contains('btn-segna-pronto')) {
+        let idx = e.target.getAttribute('data-req-idx');
+        let ordini = getDB("db_ordini");
 
-      if (!ordini || ordini.length === 0) {
-        alert("⚠️ Nessun ordine trovato in Magazzino!\n\nRegistra prima un ordine nella sezione 'HR - Magazzino & Ordini'.");
-        return;
+        if (!ordini || ordini.length === 0) {
+          ordini = [{ id: "1", fattura: "ORD-2026-01", acquistati: 1000, erogati_iniziali: 0, valore: "5,20", residuo_precedente: 0 }];
+          setDB("db_ordini", ordini);
+        }
+
+        let ultimoOrdine = ordini[ordini.length - 1].fattura;
+        let reqs = getDB("db_richieste");
+
+        if (reqs[idx]) {
+          reqs[idx].stato = "Pronti";
+          reqs[idx].ordine_fattura = ultimoOrdine;
+          setDB("db_richieste", reqs);
+          alert("✅ Richiesta segnata come PRONTI e associata all'ultimo ordine: " + ultimoOrdine);
+          renderRichiesteHR();
+          renderHRMagazzino();
+        }
       }
 
-      const ultimoOrdine = ordini[ordini.length - 1];
-      let reqs = getDB("db_richieste");
-      let req = reqs.find(r => String(r.id) === String(reqId));
-
-      if (req) {
-        req.stato = "Pronti";
-        req.ordine_fattura = ultimoOrdine.fattura;
-        setDB("db_richieste", reqs);
-        alert(`✅ Richiesta di ${req.nome_cognome} segnata come PRONTI e associata all'ultimo ordine (${ultimoOrdine.fattura})!`);
-        renderRichiesteHR();
-        renderHRMagazzino();
+      if (e.target && e.target.classList.contains('btn-elimina-req')) {
+        if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {
+          let idx = e.target.getAttribute('data-del-idx');
+          let reqs = getDB("db_richieste");
+          reqs.splice(idx, 1);
+          setDB("db_richieste", reqs);
+          renderRichiesteHR();
+          renderHRMagazzino();
+        }
       }
-    };
-
-    function eliminaRichiesta(id) {
-      if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {
-        let reqs = getDB("db_richieste").filter(r => String(r.id) !== String(id));
-        setDB("db_richieste", reqs);
-        renderRichiesteHR();
-        renderHRMagazzino();
-      }
-    }
+    });
 
     function renderMatrice() {
       const tbody = document.getElementById('matriceTbody');
       const theadRow = document.getElementById('matriceTheadRow');
-      const anno = parseInt(document.getElementById('matriceAnno').value);
+      const elAnno = document.getElementById('matriceAnno');
+      if(!tbody || !theadRow || !elAnno) return;
+
+      const anno = parseInt(elAnno.value);
       const listaDipendenti = getDB("db_anagrafica");
       let mat = getDB("db_matrice");
 
@@ -743,10 +777,10 @@
         tbody.innerHTML += `<tr class="border-b hover:bg-slate-50/50"><td class="p-2.5 border-r font-medium text-slate-700">${r.numero_tessera}</td><td class="p-2.5 border-r">${selectDipHtml}</td>${mCells}</tr>`;
       });
 
-      document.getElementById('labelTotTicket').textContent = `Totale Ticket Caricati (${anno})`;
-      document.getElementById('labelTotValore').textContent = `Valore Economico Totale (${anno})`;
-      document.getElementById('totTicketMatrice').textContent = tot + " ticket";
-      document.getElementById('totValoreMatrice').textContent = "€ " + (tot * 5.20).toFixed(2).replace('.', ',');
+      if(document.getElementById('labelTotTicket')) document.getElementById('labelTotTicket').textContent = `Totale Ticket Caricati (${anno})`;
+      if(document.getElementById('labelTotValore')) document.getElementById('labelTotValore').textContent = `Valore Economico Totale (${anno})`;
+      if(document.getElementById('totTicketMatrice')) document.getElementById('totTicketMatrice').textContent = tot + " ticket";
+      if(document.getElementById('totValoreMatrice')) document.getElementById('totValoreMatrice').textContent = "€ " + (tot * 5.20).toFixed(2).replace('.', ',');
     }
 
     function salvaMatriceTessere() {
@@ -845,22 +879,24 @@
 
           ultimiRisultatiCalcoloPresenze = [];
           const tbody = document.getElementById('presenzeResultTbody');
-          tbody.innerHTML = "";
+          if(tbody) {
+            tbody.innerHTML = "";
 
-          Object.keys(conteggio).forEach(nome => {
-            let numT = conteggio[nome];
-            ultimiRisultatiCalcoloPresenze.push({ nome: nome, ticket: numT });
-            tbody.innerHTML += `
-              <tr class="border-b hover:bg-slate-50">
-                <td class="p-2 font-semibold text-slate-800">${nome}</td>
-                <td class="p-2 text-emerald-600 font-bold">${numT > 0 ? 'SÌ' : 'NO'}</td>
-                <td class="p-2 font-bold">${numT} ticket</td>
-                <td class="p-2">€ ${(numT * 5.20).toFixed(2).replace('.', ',')}</td>
-              </tr>
-            `;
-          });
+            Object.keys(conteggio).forEach(nome => {
+              let numT = conteggio[nome];
+              ultimiRisultatiCalcoloPresenze.push({ nome: nome, ticket: numT });
+              tbody.innerHTML += `
+                <tr class="border-b hover:bg-slate-50">
+                  <td class="p-2 font-semibold text-slate-800">${nome}</td>
+                  <td class="p-2 text-emerald-600 font-bold">${numT > 0 ? 'SÌ' : 'NO'}</td>
+                  <td class="p-2 font-bold">${numT} ticket</td>
+                  <td class="p-2">€ ${(numT * 5.20).toFixed(2).replace('.', ',')}</td>
+                </tr>
+              `;
+            });
+          }
 
-          document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
+          if(document.getElementById('risultatiPresenzeBox')) document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
           alert("✅ Calcolo completato con successo!");
         } catch(err) {
           alert("❌ Errore nella lettura del file. Assicurati che sia un file Excel o CSV valido.");
@@ -898,6 +934,7 @@
 
     function renderStoricoPresenze() {
       const container = document.getElementById('storicoPresenzeList');
+      if(!container) return;
       const storico = getDB("db_storico_presenze");
       container.innerHTML = "";
 
@@ -919,6 +956,8 @@
     function renderAnagrafica() {
       const tbody = document.getElementById('anagraficaTbody');
       const select = document.getElementById('selectDipendenteRimuovere');
+      if(!tbody || !select) return;
+
       const list = getDB("db_anagrafica");
 
       tbody.innerHTML = "";
@@ -978,7 +1017,8 @@
     }
 
     function salvaOrdineMagazzino() {
-      const fatturaInput = document.getElementById('ordFattura').value.trim();
+      const elFattura = document.getElementById('ordFattura');
+      const fatturaInput = elFattura ? elFattura.value.trim() : "";
       if(!fatturaInput) {
         alert("⚠️ Inserisci un Numero Fattura / Ordine valido!");
         return;
@@ -989,10 +1029,10 @@
       let nuovoOrdine = {
         id: String(Date.now()),
         fattura: fatturaInput,
-        erogati_iniziali: parseInt(document.getElementById('erogatiIniziali').value) || 0,
-        valore: document.getElementById('valoreTicket').value,
-        residuo_precedente: parseInt(document.getElementById('residuoPrecedente').value) || 0,
-        acquistati: parseInt(document.getElementById('quantitaAcquistati').value) || 0
+        erogati_iniziali: parseInt(document.getElementById('erogatiIniziali') ? document.getElementById('erogatiIniziali').value : 0) || 0,
+        valore: document.getElementById('valoreTicket') ? document.getElementById('valoreTicket').value : "5,20",
+        residuo_precedente: parseInt(document.getElementById('residuoPrecedente') ? document.getElementById('residuoPrecedente').value : 0) || 0,
+        acquistati: parseInt(document.getElementById('quantitaAcquistati') ? document.getElementById('quantitaAcquistati').value : 1000) || 1000
       };
 
       ordini.push(nuovoOrdine);
@@ -1000,9 +1040,10 @@
 
       alert("✅ Nuovo Ordine/Fattura salvato con successo nel Magazzino!");
 
-      document.getElementById('formNuovoOrdine').reset();
-      document.getElementById('valoreTicket').value = "5,20";
-      document.getElementById('quantitaAcquistati').value = "2000";
+      const form = document.getElementById('formNuovoOrdine');
+      if(form) form.reset();
+      if(document.getElementById('valoreTicket')) document.getElementById('valoreTicket').value = "5,20";
+      if(document.getElementById('quantitaAcquistati')) document.getElementById('quantitaAcquistati').value = "2000";
 
       renderHRMagazzino();
       renderRichiesteHR();
@@ -1020,6 +1061,7 @@
     function renderHRMagazzino() {
       if(!isHrAuthenticated) return;
       const ordiniTbody = document.getElementById('ordiniTbody');
+      if(!ordiniTbody) return;
       const ordini = getDB("db_ordini");
       const reqs = getDB("db_richieste").filter(r => r.stato === 'Pronti');
 
@@ -1031,17 +1073,17 @@
       }
 
       ordini.forEach(o => {
-        let erogatiRichieste = reqs.filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + r.num_ticket, 0);
-        let erogatiTotali = o.erogati_iniziali + erogatiRichieste;
-        let residuoTotale = Math.max(0, (o.acquistati + o.residuo_precedente) - erogatiTotali);
+        let erogatiRichieste = reqs.filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + (r.num_ticket || 1), 0);
+        let erogatiTotali = (o.erogati_iniziali || 0) + erogatiRichieste;
+        let residuoTotale = Math.max(0, ((o.acquistati || 0) + (o.residuo_precedente || 0)) - erogatiTotali);
 
         ordiniTbody.innerHTML += `
           <tr class="hover:bg-slate-50/60">
             <td class="p-2.5 font-bold">${o.fattura}</td>
-            <td class="p-2.5">€ ${o.valore}</td>
-            <td class="p-2.5">${o.acquistati}</td>
+            <td class="p-2.5">€ ${o.valore || '5,20'}</td>
+            <td class="p-2.5">${o.acquistati || 0}</td>
             <td class="p-2.5 text-amber-600 font-semibold">${erogatiTotali}</td>
-            <td class="p-2.5">${o.residuo_precedente}</td>
+            <td class="p-2.5">${o.residuo_precedente || 0}</td>
             <td class="p-2.5 text-emerald-600 font-bold">${residuoTotale}</td>
             <td class="p-2.5"><button type="button" onclick="eliminaOrdine('${String(o.id)}')" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
           </tr>

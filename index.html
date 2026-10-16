@@ -651,6 +651,14 @@
         if (filtro !== 'Tutti' && r.stato !== filtro) return;
         let isPronto = r.stato === 'Pronti';
 
+        let btnAzione = !isPronto 
+          ? `<button type="button" onclick="segnaProntoInLavorazione(${idx})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition shadow-sm cursor-pointer">Segna come PRONTI 🚀</button>`
+          : `<span class="text-xs text-emerald-700 font-semibold">Associato all&#39;Ordine: ${r.ordine_fattura || 'N/A'}</span>`;
+
+        let btnDownload = (r.file_url && r.file_url !== '#')
+          ? `<a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>`
+          : '';
+
         container.innerHTML += `
           <div class="stCard p-4 bg-white space-y-3 text-xs w-full">
             <div class="flex justify-between items-center font-bold">
@@ -659,10 +667,8 @@
             </div>
             <div class="text-slate-600"><b>Email:</b> ${r.email || 'N/A'} | <b>Periodo:</b> ${r.mese || ''} ${r.anno || ''} | <b>N° Ticket:</b> ${r.num_ticket || 1}</div>
             <div class="flex items-center gap-4 pt-1">
-              ${r.file_url && r.file_url !== '#' ? `<a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>` : ''}
-              ${!isPronto ? `
-                <button type="button" onclick="segnaProntoInLavorazione(\${idx})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition shadow-sm cursor-pointer">Segna come PRONTI 🚀</button>
-              ` : `<span class="text-xs text-emerald-700 font-semibold">Associato all'Ordine: \${r.ordine_fattura || 'N/A'}</span>`}
+              ${btnDownload}
+              ${btnAzione}
             </div>
           </div>
         `;
@@ -738,7 +744,6 @@
 
             let rowStr = cells.join(" ").toUpperCase();
 
-            // Riconosce il dipendente dal blocco
             if (!rowStr.includes("RIEPILOGO") && !rowStr.includes("STAMPA") && !rowStr.includes("FILTRATO") && !rowStr.includes("DAL:")) {
               Object.keys(conteggio).forEach(anagNome => {
                 let pAnag = anagNome.replace(/\s+/g, ' ');
@@ -748,12 +753,10 @@
               });
             }
 
-            // Azzera se incontra la riga di chiusura totale
             if (rowStr.includes("RIEPILOGO TOTALE")) {
               currentEmp = null;
             }
 
-            // Legge il totale riportato nella Colonna AQ (ultimo valore della riga)
             let primaParola = cells[0].toUpperCase();
             if (currentEmp && (primaParola === "PREORD" || primaParola === "SMARTW" || rowStr.includes("PREORD") || rowStr.includes("SMARTW"))) {
               let lastValStr = cells[cells.length - 1];

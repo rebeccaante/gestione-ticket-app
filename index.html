@@ -217,7 +217,7 @@
           <div id="subTabB" class="hidden space-y-4 w-full">
             <div class="stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs text-slate-800">📄 Upload Nuovo Libro Presenze Mensile</h4>
-              <p class="text-xs text-slate-500">Legge direttamente il totale riportato nella <b>Colonna AQ</b> per le causali <b>PREORD</b> e <b>SMARTW</b> dai dipendenti abilitati.</p>
+              <p class="text-xs text-slate-500">Legge direttamente il valore finale scritto nella <b>Colonna AQ</b> per <b>PREORD</b> e <b>SMARTW</b>.</p>
               <div class="grid grid-cols-3 gap-4">
                 <div>
                   <label class="block text-xs font-semibold mb-1">Mese Presenze:</label>
@@ -237,13 +237,13 @@
 
             <div id="risultatiPresenzeBox" class="hidden stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs">🧮 Risultati Calcolo Spettanze Ticket</h4>
-              <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket Colonna AQ (PREORD + SMARTW)</th><th class="p-2">Valore (€)</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
+              <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket AQ (PREORD + SMARTW)</th><th class="p-2">Valore (€)</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
               <button type="button" onclick="popolaMatriceDaPresenze()" class="bg-red-500 text-white px-4 py-2 rounded-md text-xs font-semibold">⚡ Applica e Popola Matrice Tessere</button>
             </div>
 
             <div class="stCard p-6 space-y-3 w-full">
               <h4 class="font-bold text-xs">📚 Archivio Storico Libri Presenze Caricati</h4>
-              <p class="text-xs text-slate-500">Clicca su un elemento archiviato per consultare i dettagli del file e le presenze associate.</p>
+              <p class="text-xs text-slate-500">I file caricati vengono salvati qui per la consultazione.</p>
               <div id="storicoPresenzeList" class="text-xs space-y-2"></div>
             </div>
           </div>
@@ -698,7 +698,7 @@
       }
     }
 
-    // ESTRAZIONE ESATTA COLONNA AQ CON DEFVAL MANTENENDO 43 COLONNE FISSE (DA 0 A 42)
+    // LETTURA DIRETTA DELL'ULTIMO NUMERO SULLA RIGA (COLONNA AQ)
     function elaboraLibroPresenze() {
       const fileInput = document.getElementById('presFile');
       if (!fileInput.files || !fileInput.files[0]) {
@@ -717,8 +717,7 @@
           const workbook = XLSX.read(data, { type: 'array' });
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
           
-          // defval: "" preserva tutte le 43 colonne incluse quelle vuote intermedie
-          const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, defval: "" });
+          const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
 
           const anagrafica = getDB("db_anagrafica");
           let conteggio = {};
@@ -732,25 +731,36 @@
           json.forEach(row => {
             if (!row || row.length === 0) return;
 
-            let col6 = row[6] ? String(row[6]).trim().toUpperCase() : "";
+            // Filtra solo celle con contenuto visibile per trovare sia causale che ultimo valore
+            let cells = row.map(v => String(v).trim()).filter(v => v !== "" && v !== "undefined" && v !== "null");
+            if (cells.length === 0) return;
 
-            // Riconosce il dipendente in colonna G (indice 6)
-            if (col6 && !col6.includes("RIEPILOGO") && !col6.includes("STAMPA") && !col6.includes("FILTRATO") && !col6.includes("DAL:")) {
-              let nomePulito = col6.includes(" - ") ? col6.split(" - ")[1].trim() : col6;
-              
+            let rowStr = cells.join(" ").toUpperCase();
+
+            // Riconosce quando la riga appartiene a un nuovo dipendente
+            if (!rowStr.includes("RIEPILOGO") && !rowStr.includes("STAMPA") && !rowStr.includes("FILTRATO") && !rowStr.includes("DAL:")) {
               Object.keys(conteggio).forEach(anagNome => {
-                if (nomePulito.includes(anagNome) || anagNome.includes(nomePulito)) {
+                let pAnag = anagNome.replace(/\s+/g, ' ');
+                if (rowStr.includes(pAnag)) {
                   currentEmp = anagNome;
                 }
               });
             }
 
-            // Legge il totale riportato esattamente in Colonna AQ (Indice 42) per PREORD e SMARTW
-            let col1 = row[1] ? String(row[1]).trim().toUpperCase() : "";
-            if (currentEmp && (col1 === "PREORD" || col1 === "SMARTW")) {
-              let valAQ = row[42] !== undefined ? parseFloat(String(row[42]).replace(',', '.')) : 0;
-              if (!isNaN(valAQ) && valAQ > 0) {
-                conteggio[currentEmp] += valAQ;
+            // Se incontra una riga di riepilogo o fine blocco, azzera l'associazione per non sforare sui dipendenti successivi
+            if (rowStr.includes("RIEPILOGO TOTALE")) {
+              currentEmp = null;
+            }
+
+            // Se la riga contiene PREORD o SMARTW ed è associata a un dipendente
+            let primaParola = cells[0].toUpperCase();
+            if (currentEmp && (primaParola === "PREORD" || primaParola === "SMARTW" || rowStr.includes("PREORD") || rowStr.includes("SMARTW"))) {
+              // L'ultimo elemento della riga filtrata è SEMPRE il valore della Colonna AQ
+              let lastValStr = cells[cells.length - 1];
+              let valNum = parseFloat(lastValStr.replace(',', '.'));
+              
+              if (!isNaN(valNum) && valNum > 0) {
+                conteggio[currentEmp] += valNum;
               }
             }
           });

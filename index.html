@@ -217,7 +217,7 @@
           <div id="subTabB" class="hidden space-y-4 w-full">
             <div class="stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs text-slate-800">📄 Upload Nuovo Libro Presenze Mensile (Colonna AQ)</h4>
-              <p class="text-xs text-slate-500">Vengono letti i valori per le causali <b>PREORD</b> e <b>SMARTW</b> dai dipendenti abilitati nell'anagrafica.</p>
+              <p class="text-xs text-slate-500">Vengono letti i giorni effettivamente lavorati per le causali <b>PREORD</b> e <b>SMARTW</b> dai dipendenti abilitati nell'anagrafica.</p>
               <div class="grid grid-cols-3 gap-4">
                 <div>
                   <label class="block text-xs font-semibold mb-1">Mese Presenze:</label>
@@ -237,7 +237,7 @@
 
             <div id="risultatiPresenzeBox" class="hidden stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs">🧮 Risultati Calcolo Spettanze Ticket</h4>
-              <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket AQ (PREORD+SMARTW)</th><th class="p-2">Valore (€)</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
+              <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket (PREORD + SMARTW)</th><th class="p-2">Valore (€)</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
               <button type="button" onclick="popolaMatriceDaPresenze()" class="bg-red-500 text-white px-4 py-2 rounded-md text-xs font-semibold">⚡ Applica e Popola Matrice Tessere</button>
             </div>
 
@@ -696,7 +696,7 @@
       }
     }
 
-    // ELABORAZIONE CORRETTA ED ESATTA DEL LIBRO PRESENZE (COLONNA AQ = INDICE 42)
+    // NUOVA FUNZIONE CORRETTA: CONTA LE CELLE COMPILATE NELLE COLONNE DEI GIORNI PER PREORD E SMARTW
     function elaboraLibroPresenze() {
       const fileInput = document.getElementById('presFile');
       if (!fileInput.files || !fileInput.files[0]) {
@@ -726,8 +726,8 @@
 
             let col6 = row[6] ? String(row[6]).trim().toUpperCase() : "";
             let col1 = row[1] ? String(row[1]).trim().toUpperCase() : "";
-            let col42 = row[42] !== undefined && row[42] !== null ? parseFloat(row[42]) : 0;
 
+            // Riconosce il dipendente
             if (col6 && !col6.includes("RIEPILOGO") && !col6.includes("STAMPA") && !col6.includes("FILTRATO") && !col6.includes("DAL:")) {
               let nomePulito = col6;
               if (col6.includes(" - ")) {
@@ -743,10 +743,15 @@
               });
             }
 
+            // Conta i giorni lavorati (celle compilate tra le colonne G ed AK, indici 6..36)
             if (currentEmp && (col1 === "PREORD" || col1 === "SMARTW")) {
-              if (!isNaN(col42) && col42 > 0) {
-                conteggio[currentEmp] += col42;
+              let giornilavorati = 0;
+              for (let c = 6; c <= 36; c++) {
+                if (row[c] !== undefined && row[c] !== null && String(row[c]).trim() !== "") {
+                  giornilavorati++;
+                }
               }
+              conteggio[currentEmp] += giornilavorati;
             }
           });
 

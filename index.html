@@ -183,7 +183,7 @@
             </div>
 
             <div class="bg-blue-50/70 border border-blue-100 text-blue-600 text-xs rounded-xl p-3 flex items-center gap-2 font-medium">
-              <span>💡</span> Inserisci o modifica i dati nelle celle e salva. Salvando, le modifiche si propagano solo all'anno selezionato e a quelli futuri.
+              <span>💡</span> I valori nei mesi si popolano in automatico dal Libro Presenze. Salvando, le assegnazioni dei nomi si propagano dall'anno selezionato a quelli futuri.
             </div>
 
             <div class="overflow-x-auto border rounded-lg w-full">
@@ -217,7 +217,7 @@
           <div id="subTabB" class="hidden space-y-4 w-full">
             <div class="stCard p-6 space-y-4 w-full">
               <h4 class="font-bold text-xs text-slate-800">📄 Upload Nuovo Libro Presenze Mensile</h4>
-              <p class="text-xs text-slate-500">Legge direttamente il valore finale scritto nella <b>Colonna AQ</b> per <b>PREORD</b> e <b>SMARTW</b>.</p>
+              <p class="text-xs text-slate-500">Estrae i ticket dalla Colonna AQ e popola **automaticamente** la Matrice Tessere salvando lo storico.</p>
               <div class="grid grid-cols-3 gap-4">
                 <div>
                   <label class="block text-xs font-semibold mb-1">Mese Presenze:</label>
@@ -232,18 +232,20 @@
                   <input type="file" id="presFile" accept=".xlsx,.xls,.csv" class="text-xs w-full">
                 </div>
               </div>
-              <button type="button" onclick="elaboraLibroPresenze()" class="stBtn px-4 py-2 text-xs font-semibold">🧮 Calcola Ticket & Archivia File</button>
+              <button type="button" onclick="elaboraLibroPresenze()" class="stBtn px-4 py-2 text-xs font-semibold">🧮 Calcola Ticket & Popola Matrice in Automatico</button>
             </div>
 
             <div id="risultatiPresenzeBox" class="hidden stCard p-6 space-y-4 w-full">
-              <h4 class="font-bold text-xs">🧮 Risultati Calcolo Spettanze Ticket</h4>
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-xs">🧮 Risultati Calcolo Spettanze Ticket (Applicati in Matrice)</h4>
+                <span class="text-xs text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">✓ Dati Salvati in Matrice e nello Storico</span>
+              </div>
               <table class="w-full text-xs text-left border rounded-lg overflow-hidden"><thead class="bg-slate-50 border-b"><tr><th class="p-2">Nome</th><th class="p-2">Presente</th><th class="p-2">Ticket AQ (PREORD + SMARTW)</th><th class="p-2">Valore (€)</th></tr></thead><tbody id="presenzeResultTbody"></tbody></table>
-              <button type="button" onclick="popolaMatriceDaPresenze()" class="bg-red-500 text-white px-4 py-2 rounded-md text-xs font-semibold">⚡ Applica e Popola Matrice Tessere</button>
             </div>
 
             <div class="stCard p-6 space-y-3 w-full">
               <h4 class="font-bold text-xs">📚 Archivio Storico Libri Presenze Caricati</h4>
-              <p class="text-xs text-slate-500">I file caricati vengono salvati qui per la consultazione.</p>
+              <p class="text-xs text-slate-500">I file caricati vengono salvati qui per la consultazione permanente.</p>
               <div id="storicoPresenzeList" class="text-xs space-y-2"></div>
             </div>
           </div>
@@ -698,7 +700,7 @@
       }
     }
 
-    // LETTURA DIRETTA DELL'ULTIMO NUMERO SULLA RIGA (COLONNA AQ)
+    // CALCOLO PRESENZE + COMPILAZIONE AUTOMATICA E PERSISTENTE DELLA MATRICE TESSERE
     function elaboraLibroPresenze() {
       const fileInput = document.getElementById('presFile');
       if (!fileInput.files || !fileInput.files[0]) {
@@ -731,13 +733,12 @@
           json.forEach(row => {
             if (!row || row.length === 0) return;
 
-            // Filtra solo celle con contenuto visibile per trovare sia causale che ultimo valore
             let cells = row.map(v => String(v).trim()).filter(v => v !== "" && v !== "undefined" && v !== "null");
             if (cells.length === 0) return;
 
             let rowStr = cells.join(" ").toUpperCase();
 
-            // Riconosce quando la riga appartiene a un nuovo dipendente
+            // Riconosce il dipendente dal blocco
             if (!rowStr.includes("RIEPILOGO") && !rowStr.includes("STAMPA") && !rowStr.includes("FILTRATO") && !rowStr.includes("DAL:")) {
               Object.keys(conteggio).forEach(anagNome => {
                 let pAnag = anagNome.replace(/\s+/g, ' ');
@@ -747,15 +748,14 @@
               });
             }
 
-            // Se incontra una riga di riepilogo o fine blocco, azzera l'associazione per non sforare sui dipendenti successivi
+            // Azzera se incontra la riga di chiusura totale
             if (rowStr.includes("RIEPILOGO TOTALE")) {
               currentEmp = null;
             }
 
-            // Se la riga contiene PREORD o SMARTW ed è associata a un dipendente
+            // Legge il totale riportato nella Colonna AQ (ultimo valore della riga)
             let primaParola = cells[0].toUpperCase();
             if (currentEmp && (primaParola === "PREORD" || primaParola === "SMARTW" || rowStr.includes("PREORD") || rowStr.includes("SMARTW"))) {
-              // L'ultimo elemento della riga filtrata è SEMPRE il valore della Colonna AQ
               let lastValStr = cells[cells.length - 1];
               let valNum = parseFloat(lastValStr.replace(',', '.'));
               
@@ -782,7 +782,17 @@
             `;
           });
 
-          // SALVATAGGIO NELLO STORICO DEI FILE
+          // POPOLAMENTO AUTOMATICO E PERSISTENTE DELLA MATRICE TESSERE
+          let mat = getDB("db_matrice");
+          ultimiRisultatiCalcoloPresenze.forEach(res => {
+            let rowMat = mat.find(m => m.assegnato_a === res.nome && m.anno === annoSel);
+            if(rowMat) {
+              rowMat[meseSel.toLowerCase()] = res.ticket;
+            }
+          });
+          setDB("db_matrice", mat);
+
+          // SALVATAGGIO NELLO STORICO FILE
           let storico = getDB("db_storico_presenze");
           let dataOra = new Date().toLocaleDateString('it-IT') + " " + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
           
@@ -805,34 +815,16 @@
           
           setDB("db_storico_presenze", storico);
           renderStoricoPresenze();
+          renderMatrice();
 
           document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
-          alert(`✅ Calcolo completato ed archiviato per ${meseSel.toUpperCase()} ${annoSel}!`);
+          alert(`✅ Calcolo completato! La Matrice Tessere per ${meseSel.toUpperCase()} ${annoSel} è stata compilata e salvata automaticamente.`);
         } catch (err) {
           console.error(err);
           alert("❌ Errore durante la lettura del file Excel.");
         }
       };
       reader.readAsArrayBuffer(fileObj);
-    }
-
-    function popolaMatriceDaPresenze() {
-      if(ultimiRisultatiCalcoloPresenze.length === 0) return;
-
-      const mese = document.getElementById('presMese').value;
-      const anno = parseInt(document.getElementById('presAnno').value);
-      let mat = getDB("db_matrice");
-
-      ultimiRisultatiCalcoloPresenze.forEach(res => {
-        let row = mat.find(m => m.assegnato_a === res.nome && m.anno === anno);
-        if(row) {
-          row[mese] = res.ticket;
-        }
-      });
-
-      setDB("db_matrice", mat);
-      alert(`⚡ Matrice tessere popolata con successo per ${mese.toUpperCase()} ${anno}!`);
-      renderMatrice();
     }
 
     function renderStoricoPresenze() {

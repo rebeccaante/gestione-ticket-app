@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestione Ticket</title>
+  <title>Gestione Ticket HR</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
@@ -58,7 +58,6 @@
       <p class="text-xs text-slate-600 mb-2">Inserisci Password HR:</p>
       <div class="relative">
         <input type="password" id="hrPasswordInput" oninput="checkPassword()" placeholder="••••••••••••" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm pr-9 focus:outline-none focus:border-slate-400">
-        <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">👁️</button>
       </div>
       <p id="pwdError" class="text-xs text-red-500 mt-1 hidden">❌ Password errata</p>
     </div>
@@ -533,11 +532,6 @@
       }
     }
 
-    function togglePasswordVisibility() {
-      const el = document.getElementById('hrPasswordInput');
-      if(el) el.type = el.type === 'password' ? 'text' : 'password';
-    }
-
     function changeCount(id, delta) {
       const el = document.getElementById(id);
       if(el) el.value = Math.max(0, (parseInt(el.value) || 0) + delta);
@@ -659,13 +653,13 @@
           <div class="stCard p-4 bg-white space-y-3 text-xs w-full">
             <div class="flex justify-between items-center font-bold">
               <span>${r.nome_cognome} — <span class="${isPronto ? 'text-emerald-600':'text-amber-600'}">${isPronto ? '✅ PRONTI' : '⏳ IN LAVORAZIONE'}</span></span>
-              <button type="button" data-del-idx="${idx}" class="btn-elimina-req text-red-500 hover:underline">🗑️ Elimina</button>
+              <button type="button" onclick="eliminaRichiesta(${idx})" class="text-red-500 hover:underline">🗑️ Elimina</button>
             </div>
             <div class="text-slate-600"><b>Email:</b> ${r.email || 'N/A'} | <b>Periodo:</b> ${r.mese || ''} ${r.anno || ''} | <b>N° Ticket:</b> ${r.num_ticket || 1}</div>
             <div class="flex items-center gap-4 pt-1">
               ${r.file_url && r.file_url !== '#' ? `<a href="${r.file_url}" download="${r.file_name}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>` : ''}
               ${!isPronto ? `
-                <button type="button" data-req-idx="\${idx}" class="btn-segna-pronto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition shadow-sm cursor-pointer">Segna come PRONTI 🚀</button>
+                <button type="button" onclick="segnaPronto(\${idx})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition shadow-sm cursor-pointer">Segna come PRONTI 🚀</button>
               ` : `<span class="text-xs text-emerald-700 font-semibold">Associato all'Ordine: \${r.ordine_fattura || 'N/A'}</span>`}
             </div>
           </div>
@@ -673,41 +667,161 @@
       });
     }
 
-    // INTERCETTAZIONE DIRETTA DEI CLICK (IMPOSSIBILE DA BLOCCARE O FALLIRE)
-    document.addEventListener('click', function(e) {
-      if (e.target && e.target.classList.contains('btn-segna-pronto')) {
-        let idx = e.target.getAttribute('data-req-idx');
-        let ordini = getDB("db_ordini");
+    function segnaPronto(idx) {
+      let ordini = getDB("db_ordini");
+      if (!ordini || ordini.length === 0) {
+        ordini = [{ id: "1", fattura: "ORD-2026-01", acquistati: 1000, erogati_iniziali: 0, valore: "5,20", residuo_precedente: 0 }];
+        setDB("db_ordini", ordini);
+      }
 
-        if (!ordini || ordini.length === 0) {
-          ordini = [{ id: "1", fattura: "ORD-2026-01", acquistati: 1000, erogati_iniziali: 0, valore: "5,20", residuo_precedente: 0 }];
-          setDB("db_ordini", ordini);
-        }
+      let ultimoOrdine = ordini[ordini.length - 1].fattura;
+      let reqs = getDB("db_richieste");
+      if (reqs[idx]) {
+        reqs[idx].stato = "Pronti";
+        reqs[idx].ordine_fattura = ultimoOrdine;
+        setDB("db_richieste", reqs);
+        alert("✅ Stato aggiornato a PRONTI! Scalato dall'ordine: " + ultimoOrdine);
+        renderRichiesteHR();
+        renderHRMagazzino();
+      }
+    }
 
-        let ultimoOrdine = ordini[ordini.length - 1].fattura;
+    function eliminaRichiesta(idx) {
+      if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {
         let reqs = getDB("db_richieste");
+        reqs.splice(idx, 1);
+        setDB("db_richieste", reqs);
+        renderRichiesteHR();
+        renderHRMagazzino();
+      }
+    }
 
-        if (reqs[idx]) {
-          reqs[idx].stato = "Pronti";
-          reqs[idx].ordine_fattura = ultimoOrdine;
-          setDB("db_richieste", reqs);
-          alert("✅ Richiesta segnata come PRONTI e associata all'ultimo ordine: " + ultimoOrdine);
-          renderRichiesteHR();
-          renderHRMagazzino();
-        }
+    // ELABORAZIONE CORRETTA ED ESATTA DEL LIBRO PRESENZE (COLONNA AQ = INDICE 42)
+    function elaboraLibroPresenze() {
+      const fileInput = document.getElementById('presFile');
+      if (!fileInput.files || !fileInput.files[0]) {
+        alert("⚠️ Seleziona prima il file Excel/CSV delle presenze!");
+        return;
       }
 
-      if (e.target && e.target.classList.contains('btn-elimina-req')) {
-        if(confirm("Sei sicuro di voler eliminare questa richiesta?")) {
-          let idx = e.target.getAttribute('data-del-idx');
-          let reqs = getDB("db_richieste");
-          reqs.splice(idx, 1);
-          setDB("db_richieste", reqs);
-          renderRichiesteHR();
-          renderHRMagazzino();
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+          const anagrafica = getDB("db_anagrafica");
+          let conteggio = {};
+          
+          anagrafica.forEach(d => {
+            if(d.diritto) conteggio[d.nome.toUpperCase().trim()] = 0;
+          });
+
+          let currentEmp = null;
+
+          json.forEach(row => {
+            if (!row) return;
+
+            let col6 = row[6] ? String(row[6]).trim().toUpperCase() : "";
+            let col1 = row[1] ? String(row[1]).trim().toUpperCase() : "";
+            let col42 = row[42] !== undefined && row[42] !== null ? parseFloat(row[42]) : 0;
+
+            if (col6 && !col6.includes("RIEPILOGO") && !col6.includes("STAMPA") && !col6.includes("FILTRATO") && !col6.includes("DAL:")) {
+              let nomePulito = col6;
+              if (col6.includes(" - ")) {
+                nomePulito = col6.split(" - ")[1].trim();
+              }
+              
+              Object.keys(conteggio).forEach(anagNome => {
+                let pAnag = anagNome.replace(/\s+/g, ' ');
+                let pExcel = nomePulito.replace(/\s+/g, ' ');
+                if (pExcel.includes(pAnag) || pAnag.includes(pExcel)) {
+                  currentEmp = anagNome;
+                }
+              });
+            }
+
+            if (currentEmp && (col1 === "PREORD" || col1 === "SMARTW")) {
+              if (!isNaN(col42) && col42 > 0) {
+                conteggio[currentEmp] += col42;
+              }
+            }
+          });
+
+          ultimiRisultatiCalcoloPresenze = [];
+          const tbody = document.getElementById('presenzeResultTbody');
+          tbody.innerHTML = "";
+
+          Object.keys(conteggio).forEach(nome => {
+            let numT = conteggio[nome];
+            ultimiRisultatiCalcoloPresenze.push({ nome: nome, ticket: numT });
+            tbody.innerHTML += `
+              <tr class="border-b hover:bg-slate-50">
+                <td class="p-2 font-semibold text-slate-800">${nome}</td>
+                <td class="p-2 ${numT > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400'}">${numT > 0 ? 'SÌ' : 'NO'}</td>
+                <td class="p-2 font-bold">${numT} ticket</td>
+                <td class="p-2">€ ${(numT * 5.20).toFixed(2).replace('.', ',')}</td>
+              </tr>
+            `;
+          });
+
+          document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
+          alert("✅ Calcolo presenze completato con successo!");
+        } catch (err) {
+          console.error(err);
+          alert("❌ Errore durante la lettura del file Excel.");
         }
+      };
+      reader.readAsArrayBuffer(fileInput.files[0]);
+    }
+
+    function popolaMatriceDaPresenze() {
+      if(ultimiRisultatiCalcoloPresenze.length === 0) return;
+
+      const mese = document.getElementById('presMese').value;
+      const anno = parseInt(document.getElementById('presAnno').value);
+      let mat = getDB("db_matrice");
+
+      ultimiRisultatiCalcoloPresenze.forEach(res => {
+        let row = mat.find(m => m.assegnato_a === res.nome && m.anno === anno);
+        if(row) {
+          row[mese] = res.ticket;
+        }
+      });
+
+      setDB("db_matrice", mat);
+
+      let storico = getDB("db_storico_presenze");
+      storico.push({ id: String(Date.now()), mese: mese, anno: anno, data: new Date().toLocaleDateString('it-IT') });
+      setDB("db_storico_presenze", storico);
+
+      alert(`⚡ Matrice tessere popolata con successo per il mese di ${mese.toUpperCase()} ${anno}!`);
+      renderStoricoPresenze();
+      renderMatrice();
+    }
+
+    function renderStoricoPresenze() {
+      const container = document.getElementById('storicoPresenzeList');
+      if(!container) return;
+      const storico = getDB("db_storico_presenze");
+      container.innerHTML = "";
+
+      if(storico.length === 0) {
+        container.innerHTML = `<span class="text-slate-400">Nessun file presenze elaborato.</span>`;
+        return;
       }
-    });
+
+      storico.forEach(s => {
+        container.innerHTML += `
+          <div class="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-200">
+            <span>📅 Mese Presenze: <b>${s.mese.toUpperCase()} ${s.anno}</b> (Elaborato il ${s.data})</span>
+            <span class="text-emerald-600 font-bold">✓ Applicato in Matrice</span>
+          </div>
+        `;
+      });
+    }
 
     function renderMatrice() {
       const tbody = document.getElementById('matriceTbody');
@@ -838,119 +952,6 @@
         setDB("db_matrice", mat);
         renderMatrice();
       }
-    }
-
-    function elaboraLibroPresenze() {
-      const fileInput = document.getElementById('presFile');
-      if(!fileInput.files || !fileInput.files[0]) {
-        alert("⚠️ Seleziona un file Excel o CSV del Libro Presenze!");
-        return;
-      }
-
-      const file = fileInput.files[0];
-      const reader = new FileReader();
-
-      reader.onload = function(e) {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-          const anagrafica = getDB("db_anagrafica");
-          const dipendentiAbilitati = anagrafica.filter(d => d.diritto).map(d => d.nome.toUpperCase());
-
-          let conteggio = {};
-          dipendentiAbilitati.forEach(nome => { conteggio[nome] = 0; });
-
-          json.forEach(row => {
-            if(row && row.length > 0) {
-              let rigaTesto = row.join(" ").toUpperCase();
-              dipendentiAbilitati.forEach(nome => {
-                if(rigaTesto.includes(nome)) {
-                  let occorrenze = (rigaTesto.match(/PREORD|SMARTW/g) || []).length;
-                  if(occorrenze > 0) {
-                    conteggio[nome] += occorrenze;
-                  }
-                }
-              });
-            }
-          });
-
-          ultimiRisultatiCalcoloPresenze = [];
-          const tbody = document.getElementById('presenzeResultTbody');
-          if(tbody) {
-            tbody.innerHTML = "";
-
-            Object.keys(conteggio).forEach(nome => {
-              let numT = conteggio[nome];
-              ultimiRisultatiCalcoloPresenze.push({ nome: nome, ticket: numT });
-              tbody.innerHTML += `
-                <tr class="border-b hover:bg-slate-50">
-                  <td class="p-2 font-semibold text-slate-800">${nome}</td>
-                  <td class="p-2 text-emerald-600 font-bold">${numT > 0 ? 'SÌ' : 'NO'}</td>
-                  <td class="p-2 font-bold">${numT} ticket</td>
-                  <td class="p-2">€ ${(numT * 5.20).toFixed(2).replace('.', ',')}</td>
-                </tr>
-              `;
-            });
-          }
-
-          if(document.getElementById('risultatiPresenzeBox')) document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
-          alert("✅ Calcolo completato con successo!");
-        } catch(err) {
-          alert("❌ Errore nella lettura del file. Assicurati che sia un file Excel o CSV valido.");
-          console.error(err);
-        }
-      };
-
-      reader.readAsArrayBuffer(file);
-    }
-
-    function popolaMatriceDaPresenze() {
-      if(ultimiRisultatiCalcoloPresenze.length === 0) return;
-
-      const mese = document.getElementById('presMese').value;
-      const anno = parseInt(document.getElementById('presAnno').value);
-      let mat = getDB("db_matrice");
-
-      ultimiRisultatiCalcoloPresenze.forEach(res => {
-        let row = mat.find(m => m.assegnato_a === res.nome && m.anno === anno);
-        if(row) {
-          row[mese] = res.ticket;
-        }
-      });
-
-      setDB("db_matrice", mat);
-
-      let storico = getDB("db_storico_presenze");
-      storico.push({ id: String(Date.now()), mese: mese, anno: anno, data: new Date().toLocaleDateString('it-IT') });
-      setDB("db_storico_presenze", storico);
-
-      alert(`⚡ Matrice tessere popolata con successo per il mese di ${mese.toUpperCase()} ${anno}!`);
-      renderStoricoPresenze();
-      renderMatrice();
-    }
-
-    function renderStoricoPresenze() {
-      const container = document.getElementById('storicoPresenzeList');
-      if(!container) return;
-      const storico = getDB("db_storico_presenze");
-      container.innerHTML = "";
-
-      if(storico.length === 0) {
-        container.innerHTML = `<span class="text-slate-400">Nessun file presenze elaborato.</span>`;
-        return;
-      }
-
-      storico.forEach(s => {
-        container.innerHTML += `
-          <div class="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-200">
-            <span>📅 Mese Presenze: <b>${s.mese.toUpperCase()} ${s.anno}</b> (Elaborato il ${s.data})</span>
-            <span class="text-emerald-600 font-bold">✓ Applicato in Matrice</span>
-          </div>
-        `;
-      });
     }
 
     function renderAnagrafica() {

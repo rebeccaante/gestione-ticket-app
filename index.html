@@ -703,7 +703,7 @@
       let { data: ordini } = await _supabase.from('ordini').select('*').order('created_at', { ascending: true });
 
       if (!ordini || ordini.length === 0) {
-        let defaultOrd = { fattura: "ORD-2026-01", numero_fattura: "ORD-2026-01", acquistati: 1000, quantita_acquistata: 1000, erogati_iniziali: 0, valore: "5,20", valore_unitario: "5,20", residuo_precedente: 0 };
+        let defaultOrd = { fattura: "ORD-2026-01", numero_fattura: "ORD-2026-01", acquistati: 1000, quantita_acquistata: 1000, erogati_iniziali: 0, valore: "5,20", valore_unitario: 5.20, residuo_precedente: 0 };
         const { data: newOrd } = await _supabase.from('ordini').insert([defaultOrd]).select();
         ordini = newOrd;
       }
@@ -1106,14 +1106,16 @@
         return;
       }
 
-      const valTicket = document.getElementById('valoreTicket') ? document.getElementById('valoreTicket').value : "5,20";
+      const valTicketRaw = document.getElementById('valoreTicket') ? document.getElementById('valoreTicket').value : "5,20";
+      const valTicketNum = parseFloat(String(valTicketRaw).replace(',', '.')) || 5.20;
+      const valTicketStr = valTicketNum.toFixed(2).replace('.', ',');
       const qty = parseInt(document.getElementById('quantitaAcquistati') ? document.getElementById('quantitaAcquistati').value : 1000) || 1000;
 
       let nuovoOrdine = {
         fattura: fatturaInput,
         numero_fattura: fatturaInput,
-        valore: valTicket,
-        valore_unitario: valTicket,
+        valore: valTicketStr,
+        valore_unitario: valTicketNum,
         acquistati: qty,
         quantita_acquistata: qty,
         erogati_iniziali: parseInt(document.getElementById('erogatiIniziali') ? document.getElementById('erogatiIniziali').value : 0) || 0,

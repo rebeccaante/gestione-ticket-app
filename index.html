@@ -452,13 +452,11 @@
     ];
 
     async function initDBCloud() {
-      // Inizializza Anagrafica se vuota nel cloud
       const { data: anag } = await _supabase.from('anagrafica').select('id');
       if (!anag || anag.length === 0) {
         await _supabase.from('anagrafica').insert(dipendentiDefault);
       }
 
-      // Inizializza Matrice Tessere se vuota
       const { data: mat } = await _supabase.from('matrice_tessere').select('id');
       if (!mat || mat.length === 0) {
         let rows = [];
@@ -705,7 +703,7 @@
       let { data: ordini } = await _supabase.from('ordini').select('*').order('created_at', { ascending: true });
 
       if (!ordini || ordini.length === 0) {
-        let defaultOrd = { fattura: "ORD-2026-01", numero_fattura: "ORD-2026-01", acquistati: 1000, erogati_iniziali: 0, valore: "5,20", valore_unitario: "5,20", residuo_precedente: 0 };
+        let defaultOrd = { fattura: "ORD-2026-01", numero_fattura: "ORD-2026-01", acquistati: 1000, quantita_acquistata: 1000, erogati_iniziali: 0, valore: "5,20", valore_unitario: "5,20", residuo_precedente: 0 };
         const { data: newOrd } = await _supabase.from('ordini').insert([defaultOrd]).select();
         ordini = newOrd;
       }
@@ -826,7 +824,6 @@
             `;
           });
 
-          // AGGIORNAMENTO MATRICE SU SUPABASE
           const { data: matCloud } = await _supabase.from('matrice_tessere').select('*').eq('anno', annoSel);
           if (matCloud) {
             for (let res of ultimiRisultatiCalcoloPresenze) {
@@ -839,7 +836,6 @@
             }
           }
 
-          // AGGIORNAMENTO STORICO PRESENZE SU SUPABASE
           let dataOra = new Date().toLocaleDateString('it-IT') + " " + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
           
           await _supabase.from('storico_presenze').upsert([{
@@ -1007,7 +1003,6 @@
 
         if (upsertErr) throw upsertErr;
 
-        // Propagazione assegnazione nomi per anni futuri
         for (let tess in rowsMap) {
           let item = rowsMap[tess];
           let payloadFuturo = [];
@@ -1112,15 +1107,17 @@
       }
 
       const valTicket = document.getElementById('valoreTicket') ? document.getElementById('valoreTicket').value : "5,20";
+      const qty = parseInt(document.getElementById('quantitaAcquistati') ? document.getElementById('quantitaAcquistati').value : 1000) || 1000;
 
       let nuovoOrdine = {
         fattura: fatturaInput,
         numero_fattura: fatturaInput,
         valore: valTicket,
         valore_unitario: valTicket,
+        acquistati: qty,
+        quantita_acquistata: qty,
         erogati_iniziali: parseInt(document.getElementById('erogatiIniziali') ? document.getElementById('erogatiIniziali').value : 0) || 0,
-        residuo_precedente: parseInt(document.getElementById('residuoPrecedente') ? document.getElementById('residuoPrecedente').value : 0) || 0,
-        acquistati: parseInt(document.getElementById('quantitaAcquistati') ? document.getElementById('quantitaAcquistati').value : 1000) || 1000
+        residuo_precedente: parseInt(document.getElementById('residuoPrecedente') ? document.getElementById('residuoPrecedente').value : 0) || 0
       };
 
       try {
@@ -1176,15 +1173,16 @@
         ordini.forEach(o => {
           let codiceFattura = o.fattura || o.numero_fattura || 'N/A';
           let valUnit = o.valore || o.valore_unitario || '5,20';
+          let quantitaAcq = o.acquistati || o.quantita_acquistata || 0;
           let erogatiRichieste = (reqs || []).filter(r => r.ordine_fattura === codiceFattura).reduce((acc, r) => acc + (r.num_ticket || 1), 0);
           let erogatiTotali = (o.erogati_iniziali || 0) + erogatiRichieste;
-          let residuoTotale = Math.max(0, ((o.acquistati || 0) + (o.residuo_precedente || 0)) - erogatiTotali);
+          let residuoTotale = Math.max(0, (quantitaAcq + (o.residuo_precedente || 0)) - erogatiTotali);
 
           ordiniTbody.innerHTML += `
             <tr class="hover:bg-slate-50/60">
               <td class="p-2.5 font-bold">${codiceFattura}</td>
               <td class="p-2.5">€ ${valUnit}</td>
-              <td class="p-2.5">${o.acquistati || 0}</td>
+              <td class="p-2.5">${quantitaAcq}</td>
               <td class="p-2.5 text-amber-600 font-semibold">${erogatiTotali}</td>
               <td class="p-2.5">${o.residuo_precedente || 0}</td>
               <td class="p-2.5 text-emerald-600 font-bold">${residuoTotale}</td>

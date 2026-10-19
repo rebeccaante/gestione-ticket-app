@@ -834,7 +834,7 @@
               if (rowMat) {
                 let datiM = rowMat.dati_mesi || {};
                 datiM[meseSel.toLowerCase()] = res.ticket;
-                await _supabase.from('matrice_tessere').update({ dati_mesi: datiM }).eq('id', rowMat.id);
+                await _supabase.from('matrice_tessere').update({ dati_mesi: datiM }).eq('numero_tessera', rowMat.numero_tessera).eq('anno', annoSel);
               }
             }
           }
@@ -908,7 +908,7 @@
       if(!tbody || !theadRow || !elAnno) return;
 
       const anno = parseInt(elAnno.value);
-      const { data: listaDipendenti } = await _supabase.from('anagrafica').select('*');
+      const { data: listaDipendenti } = await _supabase.from('anagrafica').select('*').order('nome', { ascending: true });
       let { data: matCloud } = await _supabase.from('matrice_tessere').select('*').eq('anno', anno);
 
       const listaMesiTabella = (anno === 2026) ? MESI_2026 : MESI_TUTTI;
@@ -922,8 +922,8 @@
       tbody.innerHTML = "";
       let tot = 0;
 
-      if (matCloud) {
-        matCloud.sort((a, b) => a.numero_tessera.localeCompare(b.numero_tessera));
+      if (matCloud && matCloud.length > 0) {
+        matCloud.sort((a, b) => a.numero_tessera.localeCompare(b.numero_tessera, undefined, { numeric: true }));
 
         matCloud.forEach(r => {
           let optionsDip = `<option value="">- Non Assegnato -</option>`;
@@ -934,14 +934,14 @@
             });
           }
 
-          let selectDipHtml = `<select data-id="${r.id}" data-tess="${r.numero_tessera}" data-field="assegnato_a" class="stInput px-2 py-1 w-full text-xs font-semibold text-slate-800 bg-transparent">${optionsDip}</select>`;
+          let selectDipHtml = `<select data-tess="${r.numero_tessera}" data-field="assegnato_a" class="stInput px-2 py-1 w-full text-xs font-semibold text-slate-800 bg-transparent">${optionsDip}</select>`;
           let datiM = r.dati_mesi || {};
 
           let mCells = listaMesiTabella.map(m => {
             let mKey = m.toLowerCase();
             let val = datiM[mKey] || 0;
             tot += val;
-            return `<td class="p-1 border-r text-center"><input type="number" min="0" value="${val}" data-id="${r.id}" data-tess="${r.numero_tessera}" data-mese="${mKey}" class="w-10 text-center border-none focus:ring-1 focus:ring-red-400 text-xs font-semibold"></td>`;
+            return `<td class="p-1 border-r text-center"><input type="number" min="0" value="${val}" data-tess="${r.numero_tessera}" data-mese="${mKey}" class="w-10 text-center border-none focus:ring-1 focus:ring-red-400 text-xs font-semibold"></td>`;
           }).join('');
 
           tbody.innerHTML += `<tr class="border-b hover:bg-slate-50/50"><td class="p-2.5 border-r font-medium text-slate-700">${r.numero_tessera}</td><td class="p-2.5 border-r">${selectDipHtml}</td>${mCells}</tr>`;
@@ -956,56 +956,76 @@
 
     async function salvaMatriceTessere() {
       const annoCorrente = parseInt(document.getElementById('matriceAnno').value);
-
       const rowsMap = {};
 
       document.querySelectorAll('#matriceTbody select, #matriceTbody input').forEach(el => {
-        let rowId = el.getAttribute('data-id');
         let tess = el.getAttribute('data-tess');
         let mese = el.getAttribute('data-mese');
         let field = el.getAttribute('data-field');
 
-        if (!rowsMap[rowId]) {
-          rowsMap[rowId] = { id: rowId, tessera: tess, assegnato_a: null, dati_mesi: {} };
+        if (!tess) return;
+
+        if (!rowsMap[tess]) {
+          rowsMap[tess] = { tessera: tess, assegnato_a: "", dati_mesi: {} };
         }
 
         if (field === 'assegnato_a') {
-          rowsMap[rowId].assegnato_a = el.value;
+          rowsMap[tess].assegnato_a = el.value;
         }
 
         if (mese) {
-          rowsMap[rowId].dati_mesi[mese] = parseInt(el.value) || 0;
+          rowsMap[tess].dati_mesi[mese] = parseInt(el.value) || 0;
         }
       });
 
       try {
-        for (let rowId in rowsMap) {
-          let item = rowsMap[rowId];
+        const payloadAnnoCorrente = [];
 
-          const { data: currentRecord } = await _supabase.from('matrice_tessere').select('dati_mesi').eq('id', rowId).single();
+        for (let tess in rowsMap) {
+          let item = rowsMap[tess];
+
+          const { data: currentRecord } = await _supabase
+            .from('matrice_tessere')
+            .select('dati_mesi')
+            .eq('numero_tessera', item.tessera)
+            .eq('anno', annoCorrente)
+            .maybeSingle();
+
           let updatedDatiMesi = Object.assign({}, currentRecord ? currentRecord.dati_mesi : {}, item.dati_mesi);
 
-          await _supabase.from('matrice_tessere').update({
+          payloadAnnoCorrente.push({
+            numero_tessera: item.tessera,
+            anno: annoCorrente,
             assegnato_a: item.assegnato_a,
             dati_mesi: updatedDatiMesi
-          }).eq('id', rowId);
-
-          // Propagazione assegnazione anni futuri
-          if (item.assegnato_a) {
-            for (let a = annoCorrente + 1; a <= 2060; a++) {
-              await _supabase.from('matrice_tessere').upsert([{
-                numero_tessera: item.tessera,
-                assegnato_a: item.assegnato_a,
-                anno: a
-              }], { onConflict: 'numero_tessera,anno' });
-            }
-          }
+          });
         }
 
-        alert(`✅ Modifiche salvate su Cloud! Assegnazioni propagate dal ${annoCorrente} agli anni futuri.`);
-        renderMatrice();
+        const { error: upsertErr } = await _supabase
+          .from('matrice_tessere')
+          .upsert(payloadAnnoCorrente, { onConflict: 'numero_tessera,anno' });
+
+        if (upsertErr) throw upsertErr;
+
+        // Propagazione assegnazione nomi per anni futuri
+        for (let tess in rowsMap) {
+          let item = rowsMap[tess];
+          let payloadFuturo = [];
+          for (let a = annoCorrente + 1; a <= 2030; a++) {
+            payloadFuturo.push({
+              numero_tessera: item.tessera,
+              anno: a,
+              assegnato_a: item.assegnato_a
+            });
+          }
+          await _supabase.from('matrice_tessere').upsert(payloadFuturo, { onConflict: 'numero_tessera,anno' });
+        }
+
+        alert(`✅ Modifiche salvate su Cloud! Assegnazioni salvate e propagate dal ${annoCorrente} agli anni futuri.`);
+        await renderMatrice();
       } catch (err) {
-        alert("❌ Errore durante il salvataggio della matrice: " + err.message);
+        console.error("Errore salvataggio matrice:", err);
+        alert("❌ Errore durante il salvataggio della matrice: " + (err.message || err));
       }
     }
 
@@ -1015,7 +1035,7 @@
         let annoCorrente = parseInt(document.getElementById('matriceAnno').value);
         let rows = [];
 
-        for(let a = annoCorrente; a <= 2060; a++) {
+        for(let a = annoCorrente; a <= 2030; a++) {
           rows.push({ numero_tessera: num, assegnato_a: "", anno: a, dati_mesi: {} });
         }
 
@@ -1148,7 +1168,7 @@
             <td class="p-2.5 text-amber-600 font-semibold">${erogatiTotali}</td>
             <td class="p-2.5">${o.residuo_precedente || 0}</td>
             <td class="p-2.5 text-emerald-600 font-bold">${residuoTotale}</td>
-            <td class="p-2.5"><button type="button" onclick="eliminaOrdine('${r.id}')" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
+            <td class="p-2.5"><button type="button" onclick="eliminaOrdine('${o.id}')" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
           </tr>
         `;
       });

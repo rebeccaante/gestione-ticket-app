@@ -1119,24 +1119,35 @@
         acquistati: parseInt(document.getElementById('quantitaAcquistati') ? document.getElementById('quantitaAcquistati').value : 1000) || 1000
       };
 
-      await _supabase.from('ordini').insert([nuovoOrdine]);
+      try {
+        const { error } = await _supabase.from('ordini').insert([nuovoOrdine]);
+        if (error) throw error;
 
-      alert("✅ Nuovo Ordine/Fattura salvato con successo nel Magazzino Cloud!");
+        alert("✅ Nuovo Ordine/Fattura salvato con successo nel Magazzino Cloud!");
 
-      const form = document.getElementById('formNuovoOrdine');
-      if(form) form.reset();
-      if(document.getElementById('valoreTicket')) document.getElementById('valoreTicket').value = "5,20";
-      if(document.getElementById('quantitaAcquistati')) document.getElementById('quantitaAcquistati').value = "2000";
+        const form = document.getElementById('formNuovoOrdine');
+        if(form) form.reset();
+        if(document.getElementById('valoreTicket')) document.getElementById('valoreTicket').value = "5,20";
+        if(document.getElementById('quantitaAcquistati')) document.getElementById('quantitaAcquistati').value = "2000";
 
-      renderHRMagazzino();
-      renderRichiesteHR();
+        await renderHRMagazzino();
+        await renderRichiesteHR();
+      } catch (err) {
+        console.error("Errore salvataggio ordine:", err);
+        alert("❌ Errore durante il salvataggio dell'ordine su Supabase: " + (err.message || err));
+      }
     }
 
     async function eliminaOrdine(id) {
       if(confirm("Sei sicuro di voler eliminare questo ordine dal cloud?")) {
-        await _supabase.from('ordini').delete().eq('id', id);
-        renderHRMagazzino();
-        renderRichiesteHR();
+        try {
+          const { error } = await _supabase.from('ordini').delete().eq('id', id);
+          if (error) throw error;
+          await renderHRMagazzino();
+          await renderRichiesteHR();
+        } catch (err) {
+          alert("❌ Errore durante l'eliminazione dell'ordine: " + err.message);
+        }
       }
     }
 
@@ -1145,33 +1156,40 @@
       const ordiniTbody = document.getElementById('ordiniTbody');
       if(!ordiniTbody) return;
 
-      const { data: ordini } = await _supabase.from('ordini').select('*').order('created_at', { ascending: true });
-      const { data: reqs } = await _supabase.from('richieste').select('*').eq('stato', 'Pronti');
+      try {
+        const { data: ordini, error: errOrd } = await _supabase.from('ordini').select('*').order('created_at', { ascending: true });
+        if (errOrd) throw errOrd;
 
-      ordiniTbody.innerHTML = "";
+        const { data: reqs } = await _supabase.from('richieste').select('*').eq('stato', 'Pronti');
 
-      if(!ordini || ordini.length === 0) {
-        ordiniTbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">Nessun ordine registrato nel cloud.</td></tr>`;
-        return;
+        ordiniTbody.innerHTML = "";
+
+        if(!ordini || ordini.length === 0) {
+          ordiniTbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">Nessun ordine registrato nel cloud.</td></tr>`;
+          return;
+        }
+
+        ordini.forEach(o => {
+          let erogatiRichieste = (reqs || []).filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + (r.num_ticket || 1), 0);
+          let erogatiTotali = (o.erogati_iniziali || 0) + erogatiRichieste;
+          let residuoTotale = Math.max(0, ((o.acquistati || 0) + (o.residuo_precedente || 0)) - erogatiTotali);
+
+          ordiniTbody.innerHTML += `
+            <tr class="hover:bg-slate-50/60">
+              <td class="p-2.5 font-bold">${o.fattura}</td>
+              <td class="p-2.5">€ ${o.valore || '5,20'}</td>
+              <td class="p-2.5">${o.acquistati || 0}</td>
+              <td class="p-2.5 text-amber-600 font-semibold">${erogatiTotali}</td>
+              <td class="p-2.5">${o.residuo_precedente || 0}</td>
+              <td class="p-2.5 text-emerald-600 font-bold">${residuoTotale}</td>
+              <td class="p-2.5"><button type="button" onclick="eliminaOrdine('${o.id}')" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
+            </tr>
+          `;
+        });
+      } catch (err) {
+        console.error("Errore recupero ordini:", err);
+        ordiniTbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">❌ Errore caricamento ordini: ${err.message || err}</td></tr>`;
       }
-
-      ordini.forEach(o => {
-        let erogatiRichieste = (reqs || []).filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + (r.num_ticket || 1), 0);
-        let erogatiTotali = (o.erogati_iniziali || 0) + erogatiRichieste;
-        let residuoTotale = Math.max(0, ((o.acquistati || 0) + (o.residuo_precedente || 0)) - erogatiTotali);
-
-        ordiniTbody.innerHTML += `
-          <tr class="hover:bg-slate-50/60">
-            <td class="p-2.5 font-bold">${o.fattura}</td>
-            <td class="p-2.5">€ ${o.valore || '5,20'}</td>
-            <td class="p-2.5">${o.acquistati || 0}</td>
-            <td class="p-2.5 text-amber-600 font-semibold">${erogatiTotali}</td>
-            <td class="p-2.5">${o.residuo_precedente || 0}</td>
-            <td class="p-2.5 text-emerald-600 font-bold">${residuoTotale}</td>
-            <td class="p-2.5"><button type="button" onclick="eliminaOrdine('${o.id}')" class="text-red-500 hover:underline">🗑️ Elimina</button></td>
-          </tr>
-        `;
-      });
     }
 
     window.onload = function() {

@@ -673,7 +673,7 @@
 
           let btnAzione = !isPronto 
             ? `<button type="button" onclick="segnaProntoInLavorazione('${r.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded text-xs transition shadow-sm cursor-pointer">Segna come PRONTI 🚀</button>`
-            : `<span class="text-xs text-emerald-700 font-semibold">Associato all&#39;Ordine: ${r.ordine_fattura || 'N/A'}</span>`;
+            : `<span class="text-xs text-emerald-700 font-semibold">Associato all&#39;Ordine: ${r.ordine_fattura || r.fattura || 'N/A'}</span>`;
 
           let btnDownload = (r.file_url && r.file_url !== '#')
             ? `<a href="${r.file_url}" target="_blank" download="${r.file_name || 'modulo.pdf'}" class="stBtn px-3 py-1.5 rounded text-xs font-medium">📄 Scarica Modulo Firmato</a>`
@@ -703,26 +703,48 @@
       let { data: ordini } = await _supabase.from('ordini').select('*').order('created_at', { ascending: true });
 
       if (!ordini || ordini.length === 0) {
-        let defaultOrd = { fattura: "ORD-2026-01", numero_fattura: "ORD-2026-01", acquistati: 1000, quantita_acquistata: 1000, erogati_iniziali: 0, valore: "5,20", valore_unitario: 5.20, residuo_precedente: 0 };
+        let defaultOrd = { 
+          fattura: "ORD-2026-01", 
+          numero_fattura: "ORD-2026-01", 
+          acquistati: 1000, 
+          quantita_acquistata: 1000, 
+          erogati_iniziali: 0, 
+          valore: "5,20", 
+          valore_unitario: 5.20, 
+          residuo_precedente: 0,
+          quantita_residua: 1000
+        };
         const { data: newOrd } = await _supabase.from('ordini').insert([defaultOrd]).select();
         ordini = newOrd;
       }
 
-      let ultimoOrdine = ordini[ordini.length - 1].fattura || ordini[ordini.length - 1].numero_fattura;
+      let ultimoOrdine = ordini && ordini.length > 0 ? (ordini[ordini.length - 1].fattura || ordini[ordini.length - 1].numero_fattura) : "ORD-2026-01";
 
       try {
-        const { error } = await _supabase
+        let updatePayload = { stato: 'Pronti', ordine_fattura: ultimoOrdine };
+        
+        let { error } = await _supabase
           .from('richieste')
-          .update({ stato: 'Pronti', ordine_fattura: ultimoOrdine })
+          .update(updatePayload)
           .eq('id', id);
 
-        if (error) throw error;
+        if (error && error.message.includes('ordine_fattura')) {
+          const { error: errFallback } = await _supabase
+            .from('richieste')
+            .update({ stato: 'Pronti', fattura: ultimoOrdine })
+            .eq('id', id);
+            
+          if (errFallback) throw errFallback;
+        } else if (error) {
+          throw error;
+        }
 
         alert("✅ Stato aggiornato nel cloud a PRONTI! Scalato dall'ordine: " + ultimoOrdine);
-        renderRichiesteHR();
-        renderHRMagazzino();
+        await renderRichiesteHR();
+        await renderHRMagazzino();
       } catch (err) {
-        alert("❌ Errore durante l'aggiornamento su Supabase: " + err.message);
+        console.error("Errore aggiornamento stato:", err);
+        alert("❌ Errore durante l'aggiornamento su Supabase: " + (err.message || err));
       }
     }
 
@@ -1110,6 +1132,9 @@
       const valTicketNum = parseFloat(String(valTicketRaw).replace(',', '.')) || 5.20;
       const valTicketStr = valTicketNum.toFixed(2).replace('.', ',');
       const qty = parseInt(document.getElementById('quantitaAcquistati') ? document.getElementById('quantitaAcquistati').value : 1000) || 1000;
+      const erogatiIniz = parseInt(document.getElementById('erogatiIniziali') ? document.getElementById('erogatiIniziali').value : 0) || 0;
+      const residuoPrec = parseInt(document.getElementById('residuoPrecedente') ? document.getElementById('residuoPrecedente').value : 0) || 0;
+      const calcResidua = Math.max(0, (qty + residuoPrec) - erogatiIniz);
 
       let nuovoOrdine = {
         fattura: fatturaInput,
@@ -1118,8 +1143,9 @@
         valore_unitario: valTicketNum,
         acquistati: qty,
         quantita_acquistata: qty,
-        erogati_iniziali: parseInt(document.getElementById('erogatiIniziali') ? document.getElementById('erogatiIniziali').value : 0) || 0,
-        residuo_precedente: parseInt(document.getElementById('residuoPrecedente') ? document.getElementById('residuoPrecedente').value : 0) || 0
+        erogati_iniziali: erogatiIniz,
+        residuo_precedente: residuoPrec,
+        quantita_residua: calcResidua
       };
 
       try {
@@ -1176,7 +1202,7 @@
           let codiceFattura = o.fattura || o.numero_fattura || 'N/A';
           let valUnit = o.valore || o.valore_unitario || '5,20';
           let quantitaAcq = o.acquistati || o.quantita_acquistata || 0;
-          let erogatiRichieste = (reqs || []).filter(r => r.ordine_fattura === codiceFattura).reduce((acc, r) => acc + (r.num_ticket || 1), 0);
+          let erogatiRichieste = (reqs || []).filter(r => (r.ordine_fattura === codiceFattura || r.fattura === codiceFattura)).reduce((acc, r) => acc + (r.num_ticket || 1), 0);
           let erogatiTotali = (o.erogati_iniziali || 0) + erogatiRichieste;
           let residuoTotale = Math.max(0, (quantitaAcq + (o.residuo_precedente || 0)) - erogatiTotali);
 

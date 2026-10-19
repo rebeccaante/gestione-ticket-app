@@ -705,12 +705,12 @@
       let { data: ordini } = await _supabase.from('ordini').select('*').order('created_at', { ascending: true });
 
       if (!ordini || ordini.length === 0) {
-        let defaultOrd = { fattura: "ORD-2026-01", acquistati: 1000, erogati_iniziali: 0, valore: "5,20", residuo_precedente: 0 };
+        let defaultOrd = { fattura: "ORD-2026-01", numero_fattura: "ORD-2026-01", acquistati: 1000, erogati_iniziali: 0, valore: "5,20", valore_unitario: "5,20", residuo_precedente: 0 };
         const { data: newOrd } = await _supabase.from('ordini').insert([defaultOrd]).select();
         ordini = newOrd;
       }
 
-      let ultimoOrdine = ordini[ordini.length - 1].fattura;
+      let ultimoOrdine = ordini[ordini.length - 1].fattura || ordini[ordini.length - 1].numero_fattura;
 
       try {
         const { error } = await _supabase
@@ -1111,10 +1111,14 @@
         return;
       }
 
+      const valTicket = document.getElementById('valoreTicket') ? document.getElementById('valoreTicket').value : "5,20";
+
       let nuovoOrdine = {
         fattura: fatturaInput,
+        numero_fattura: fatturaInput,
+        valore: valTicket,
+        valore_unitario: valTicket,
         erogati_iniziali: parseInt(document.getElementById('erogatiIniziali') ? document.getElementById('erogatiIniziali').value : 0) || 0,
-        valore: document.getElementById('valoreTicket') ? document.getElementById('valoreTicket').value : "5,20",
         residuo_precedente: parseInt(document.getElementById('residuoPrecedente') ? document.getElementById('residuoPrecedente').value : 0) || 0,
         acquistati: parseInt(document.getElementById('quantitaAcquistati') ? document.getElementById('quantitaAcquistati').value : 1000) || 1000
       };
@@ -1170,14 +1174,16 @@
         }
 
         ordini.forEach(o => {
-          let erogatiRichieste = (reqs || []).filter(r => r.ordine_fattura === o.fattura).reduce((acc, r) => acc + (r.num_ticket || 1), 0);
+          let codiceFattura = o.fattura || o.numero_fattura || 'N/A';
+          let valUnit = o.valore || o.valore_unitario || '5,20';
+          let erogatiRichieste = (reqs || []).filter(r => r.ordine_fattura === codiceFattura).reduce((acc, r) => acc + (r.num_ticket || 1), 0);
           let erogatiTotali = (o.erogati_iniziali || 0) + erogatiRichieste;
           let residuoTotale = Math.max(0, ((o.acquistati || 0) + (o.residuo_precedente || 0)) - erogatiTotali);
 
           ordiniTbody.innerHTML += `
             <tr class="hover:bg-slate-50/60">
-              <td class="p-2.5 font-bold">${o.fattura}</td>
-              <td class="p-2.5">€ ${o.valore || '5,20'}</td>
+              <td class="p-2.5 font-bold">${codiceFattura}</td>
+              <td class="p-2.5">€ ${valUnit}</td>
               <td class="p-2.5">${o.acquistati || 0}</td>
               <td class="p-2.5 text-amber-600 font-semibold">${erogatiTotali}</td>
               <td class="p-2.5">${o.residuo_precedente || 0}</td>

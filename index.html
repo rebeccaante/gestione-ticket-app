@@ -231,7 +231,10 @@
                 </div>
                 <div>
                   <label class="block text-xs font-semibold mb-1">Seleziona File (Excel/CSV):</label>
-                  <input type="file" id="presFile" accept=".xlsx,.xls,.csv" class="text-xs w-full">
+                  <div class="flex gap-2 items-center">
+                    <input type="file" id="presFile" accept=".xlsx,.xls,.csv" class="text-xs w-full">
+                    <button type="button" onclick="salvaSoloFilePresenze()" class="stBtn px-3 py-1.5 text-xs font-semibold whitespace-nowrap bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300">💾 Salva File nello Storico</button>
+                  </div>
                 </div>
               </div>
               <button type="button" onclick="elaboraLibroPresenze()" class="stBtn px-4 py-2 text-xs font-semibold">🧮 Calcola Ticket & Popola Matrice in Automatico</button>
@@ -767,6 +770,44 @@
       }
     }
 
+    async function salvaSoloFilePresenze() {
+      const fileInput = document.getElementById('presFile');
+      if (!fileInput.files || !fileInput.files[0]) {
+        alert("⚠️ Seleziona prima un file Excel/CSV delle presenze da salvare!");
+        return;
+      }
+
+      const fileObj = fileInput.files[0];
+      const meseSel = document.getElementById('presMese').value;
+      const annoSel = parseInt(document.getElementById('presAnno').value);
+      let dataOra = new Date().toLocaleDateString('it-IT') + " " + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+
+      let payloadStorico = {
+        mese: meseSel.toLowerCase(),
+        anno: annoSel,
+        file_name: fileObj.name,
+        file_size: (fileObj.size / 1024).toFixed(1) + " KB",
+        data_upload: dataOra,
+        risultati: ultimiRisultatiCalcoloPresenze || []
+      };
+
+      try {
+        const { error } = await _supabase.from('storico_presenze').insert([payloadStorico]);
+        if (error) {
+          // Fallback se l'inserimento diretto fallisce: provo a cancellare e reinserire
+          await _supabase.from('storico_presenze').delete().eq('mese', meseSel.toLowerCase()).eq('anno', annoSel);
+          const { error: errRetry } = await _supabase.from('storico_presenze').insert([payloadStorico]);
+          if (errRetry) throw errRetry;
+        }
+
+        alert(`✅ File "${fileObj.name}" salvato con successo nello Storico Presenze Cloud per ${meseSel.toUpperCase()} ${annoSel}!`);
+        await renderStoricoPresenze();
+      } catch (err) {
+        console.error("Errore salvataggio file presenze:", err);
+        alert("❌ Errore durante il salvataggio del file nello storico: " + (err.message || err));
+      }
+    }
+
     async function elaboraLibroPresenze() {
       const fileInput = document.getElementById('presFile');
       if (!fileInput.files || !fileInput.files[0]) {
@@ -870,12 +911,9 @@
             risultati: ultimiRisultatiCalcoloPresenze
           };
 
-          // Tentativo di inserimento/aggiornamento su Cloud
-          const { error: errStorico } = await _supabase.from('storico_presenze').upsert([payloadStorico], { onConflict: 'mese,anno' });
-
+          // Salva/aggiorna lo storico
+          const { error: errStorico } = await _supabase.from('storico_presenze').insert([payloadStorico]);
           if (errStorico) {
-            console.warn("Upsert fallito, tentativo inserimento semplice:", errStorico);
-            // Fallback se il vincolo ON CONFLICT non esiste ancora sul DB
             await _supabase.from('storico_presenze').delete().eq('mese', meseSel.toLowerCase()).eq('anno', annoSel);
             await _supabase.from('storico_presenze').insert([payloadStorico]);
           }
@@ -898,7 +936,7 @@
       if(!container) return;
 
       try {
-        const { data: storico, error } = await _supabase.from('storico_presenze').select('*').order('created_at', { ascending: false });
+        const { data: storico, error } = await _supabase.from('storico_presenze').select('*');
         
         if (error) throw error;
         
@@ -908,6 +946,9 @@
           container.innerHTML = `<div class="p-3 bg-slate-50 text-slate-400 rounded-lg text-center border">Nessun file presenze ancora salvato nel cloud.</div>`;
           return;
         }
+
+        // Ordina lato JS dal più recente al meno recente
+        storico.sort((a, b) => (b.id || 0) > (a.id || 0) ? 1 : -1);
 
         storico.forEach((s) => {
           let jsonRisultati = JSON.stringify(s.risultati || []).replace(/'/g, "&apos;");

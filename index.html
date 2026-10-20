@@ -782,12 +782,13 @@
       const annoSel = parseInt(document.getElementById('presAnno').value);
       let dataOra = new Date().toLocaleDateString('it-IT') + " " + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
 
-      // Mappiamo sia nome_file che file_name per garantire compatibilità completa
+      // Mappatura omnicomprensiva con fallback automatico per ogni campo
       let payloadStorico = {
         mese: meseSel.toLowerCase(),
         anno: annoSel,
         nome_file: fileObj.name,
         file_name: fileObj.name,
+        file_url: "#",
         file_size: (fileObj.size / 1024).toFixed(1) + " KB",
         data_upload: dataOra,
         risultati: ultimiRisultatiCalcoloPresenze || []
@@ -796,8 +797,9 @@
       try {
         let { error } = await _supabase.from('storico_presenze').insert([payloadStorico]);
 
-        // Fallback: se una colonna opzionale fallisce, prova la pulizia del payload
+        // Se una colonna specifica genera errore di vincolo o colonna mancante, la rimuove e riprova
         if (error) {
+          if (error.message.includes('file_url')) delete payloadStorico.file_url;
           if (error.message.includes('data_upload')) delete payloadStorico.data_upload;
           if (error.message.includes('file_name')) delete payloadStorico.file_name;
           if (error.message.includes('nome_file')) delete payloadStorico.nome_file;
@@ -913,6 +915,7 @@
             anno: annoSel,
             nome_file: fileObj.name,
             file_name: fileObj.name,
+            file_url: "#",
             file_size: (fileObj.size / 1024).toFixed(1) + " KB",
             data_upload: dataOra,
             risultati: ultimiRisultatiCalcoloPresenze
@@ -920,6 +923,7 @@
 
           let { error: errStorico } = await _supabase.from('storico_presenze').insert([payloadStorico]);
           if (errStorico) {
+            if (errStorico.message.includes('file_url')) delete payloadStorico.file_url;
             if (errStorico.message.includes('data_upload')) delete payloadStorico.data_upload;
             if (errStorico.message.includes('file_name')) delete payloadStorico.file_name;
             if (errStorico.message.includes('nome_file')) delete payloadStorico.nome_file;
@@ -955,7 +959,6 @@
           return;
         }
 
-        // Ordina lato JS dal più recente al meno recente
         storico.sort((a, b) => (b.id || 0) > (a.id || 0) ? 1 : -1);
 
         storico.forEach((s) => {

@@ -640,6 +640,7 @@
       if(document.getElementById('subTabB')) document.getElementById('subTabB').classList.toggle('hidden', s !== 'subB');
       if(document.getElementById('subTabC')) document.getElementById('subTabC').classList.toggle('hidden', s !== 'subC');
       if(s === 'subA') renderMatrice();
+      if(s === 'subB') renderStoricoPresenze();
       if(s === 'subC') renderAnagrafica();
     }
 
@@ -860,23 +861,33 @@
 
           let dataOra = new Date().toLocaleDateString('it-IT') + " " + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
           
-          await _supabase.from('storico_presenze').upsert([{
-            mese: meseSel,
+          let payloadStorico = {
+            mese: meseSel.toLowerCase(),
             anno: annoSel,
             file_name: fileObj.name,
             file_size: (fileObj.size / 1024).toFixed(1) + " KB",
             data_upload: dataOra,
             risultati: ultimiRisultatiCalcoloPresenze
-          }], { onConflict: 'mese,anno' });
+          };
 
-          renderStoricoPresenze();
-          renderMatrice();
+          // Tentativo di inserimento/aggiornamento su Cloud
+          const { error: errStorico } = await _supabase.from('storico_presenze').upsert([payloadStorico], { onConflict: 'mese,anno' });
+
+          if (errStorico) {
+            console.warn("Upsert fallito, tentativo inserimento semplice:", errStorico);
+            // Fallback se il vincolo ON CONFLICT non esiste ancora sul DB
+            await _supabase.from('storico_presenze').delete().eq('mese', meseSel.toLowerCase()).eq('anno', annoSel);
+            await _supabase.from('storico_presenze').insert([payloadStorico]);
+          }
+
+          await renderStoricoPresenze();
+          await renderMatrice();
 
           document.getElementById('risultatiPresenzeBox').classList.remove('hidden');
-          alert(`✅ Calcolo completato! La Matrice Tessere per ${meseSel.toUpperCase()} ${annoSel} è stata compilata e salvata nel Cloud.`);
+          alert(`✅ Calcolo completato! La Matrice Tessere per ${meseSel.toUpperCase()} ${annoSel} è stata compilata e salvata nello Storico Cloud.`);
         } catch (err) {
-          console.error(err);
-          alert("❌ Errore durante l'elaborazione su Supabase.");
+          console.error("Errore elaborazione presenze:", err);
+          alert("❌ Errore durante l'elaborazione del file su Supabase: " + (err.message || err));
         }
       };
       reader.readAsArrayBuffer(fileObj);
@@ -886,25 +897,34 @@
       const container = document.getElementById('storicoPresenzeList');
       if(!container) return;
 
-      const { data: storico } = await _supabase.from('storico_presenze').select('*').order('created_at', { ascending: false });
-      container.innerHTML = "";
+      try {
+        const { data: storico, error } = await _supabase.from('storico_presenze').select('*').order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        container.innerHTML = "";
 
-      if(!storico || storico.length === 0) {
-        container.innerHTML = `<div class="p-3 bg-slate-50 text-slate-400 rounded-lg text-center border">Nessun file presenze ancora salvato nel cloud.</div>`;
-        return;
-      }
+        if(!storico || storico.length === 0) {
+          container.innerHTML = `<div class="p-3 bg-slate-50 text-slate-400 rounded-lg text-center border">Nessun file presenze ancora salvato nel cloud.</div>`;
+          return;
+        }
 
-      storico.forEach((s) => {
-        container.innerHTML += `
-          <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
-            <div>
-              <p class="font-bold text-slate-800">📅 ${s.mese.toUpperCase()} ${s.anno}</p>
-              <p class="text-slate-500 text-[11px]">📄 File: <span class="font-semibold text-slate-700">${s.file_name}</span> (${s.file_size}) — Caricato il ${s.data_upload}</p>
+        storico.forEach((s) => {
+          let jsonRisultati = JSON.stringify(s.risultati || []).replace(/'/g, "&apos;");
+          container.innerHTML += `
+            <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <div>
+                <p class="font-bold text-slate-800">📅 ${String(s.mese).toUpperCase()} ${s.anno}</p>
+                <p class="text-slate-500 text-[11px]">📄 File: <span class="font-semibold text-slate-700">${s.file_name}</span> (${s.file_size}) — Caricato il ${s.data_upload}</p>
+              </div>
+              <button type="button" onclick='mostraDettagliStoricoObj(${jsonRisultati})' class="stBtn px-3 py-1.5 text-xs font-semibold shadow-sm hover:border-red-500">🔍 Visualizza Dettagli Presenze File</button>
             </div>
-            <button type="button" onclick='mostraDettagliStoricoObj(${JSON.stringify(s.risultati)})' class="stBtn px-3 py-1.5 text-xs font-semibold shadow-sm hover:border-red-500">🔍 Visualizza Dettagli Presenze File</button>
-          </div>
-        `;
-      });
+          `;
+        });
+      } catch (err) {
+        console.error("Errore recupero storico presenze:", err);
+        container.innerHTML = `<div class="p-3 bg-red-50 text-red-500 rounded-lg text-center border border-red-200">❌ Errore nel caricamento dello storico dal Cloud.</div>`;
+      }
     }
 
     function mostraDettagliStoricoObj(risultati) {

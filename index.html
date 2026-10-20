@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8">
@@ -781,9 +782,11 @@
       const annoSel = parseInt(document.getElementById('presAnno').value);
       let dataOra = new Date().toLocaleDateString('it-IT') + " " + new Date().toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
 
+      // Mappiamo sia nome_file che file_name per garantire compatibilità completa
       let payloadStorico = {
         mese: meseSel.toLowerCase(),
         anno: annoSel,
+        nome_file: fileObj.name,
         file_name: fileObj.name,
         file_size: (fileObj.size / 1024).toFixed(1) + " KB",
         data_upload: dataOra,
@@ -793,16 +796,14 @@
       try {
         let { error } = await _supabase.from('storico_presenze').insert([payloadStorico]);
 
-        // Fallback: se 'data_upload' non viene trovata nello schema cache, tenta l'invio escludendola
-        if (error && error.message.includes('data_upload')) {
-          delete payloadStorico.data_upload;
+        // Fallback: se una colonna opzionale fallisce, prova la pulizia del payload
+        if (error) {
+          if (error.message.includes('data_upload')) delete payloadStorico.data_upload;
+          if (error.message.includes('file_name')) delete payloadStorico.file_name;
+          if (error.message.includes('nome_file')) delete payloadStorico.nome_file;
+
           let { error: errRetry } = await _supabase.from('storico_presenze').insert([payloadStorico]);
           if (errRetry) throw errRetry;
-        } else if (error) {
-          // In alternativa tenta prima la cancellazione di eventuali duplicati e il reinserimento
-          await _supabase.from('storico_presenze').delete().eq('mese', meseSel.toLowerCase()).eq('anno', annoSel);
-          let { error: errReinsert } = await _supabase.from('storico_presenze').insert([payloadStorico]);
-          if (errReinsert) throw errReinsert;
         }
 
         alert(`✅ File "${fileObj.name}" salvato con successo nello Storico Presenze Cloud per ${meseSel.toUpperCase()} ${annoSel}!`);
@@ -910,19 +911,18 @@
           let payloadStorico = {
             mese: meseSel.toLowerCase(),
             anno: annoSel,
+            nome_file: fileObj.name,
             file_name: fileObj.name,
             file_size: (fileObj.size / 1024).toFixed(1) + " KB",
             data_upload: dataOra,
             risultati: ultimiRisultatiCalcoloPresenze
           };
 
-          // Salva/aggiorna lo storico con gestione fallback
           let { error: errStorico } = await _supabase.from('storico_presenze').insert([payloadStorico]);
-          if (errStorico && errStorico.message.includes('data_upload')) {
-            delete payloadStorico.data_upload;
-            await _supabase.from('storico_presenze').insert([payloadStorico]);
-          } else if (errStorico) {
-            await _supabase.from('storico_presenze').delete().eq('mese', meseSel.toLowerCase()).eq('anno', annoSel);
+          if (errStorico) {
+            if (errStorico.message.includes('data_upload')) delete payloadStorico.data_upload;
+            if (errStorico.message.includes('file_name')) delete payloadStorico.file_name;
+            if (errStorico.message.includes('nome_file')) delete payloadStorico.nome_file;
             await _supabase.from('storico_presenze').insert([payloadStorico]);
           }
 
@@ -961,11 +961,12 @@
         storico.forEach((s) => {
           let jsonRisultati = JSON.stringify(s.risultati || []).replace(/'/g, "&apos;");
           let dataCaricamentoText = s.data_upload ? ` — Caricato il ${s.data_upload}` : '';
+          let nomeFileVisualizzato = s.nome_file || s.file_name || 'N/A';
           container.innerHTML += `
             <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
               <div>
                 <p class="font-bold text-slate-800">📅 ${String(s.mese).toUpperCase()} ${s.anno}</p>
-                <p class="text-slate-500 text-[11px]">📄 File: <span class="font-semibold text-slate-700">${s.file_name || 'N/A'}</span> (${s.file_size || 'N/A'})${dataCaricamentoText}</p>
+                <p class="text-slate-500 text-[11px]">📄 File: <span class="font-semibold text-slate-700">${nomeFileVisualizzato}</span> (${s.file_size || 'N/A'})${dataCaricamentoText}</p>
               </div>
               <button type="button" onclick='mostraDettagliStoricoObj(${jsonRisultati})' class="stBtn px-3 py-1.5 text-xs font-semibold shadow-sm hover:border-red-500">🔍 Visualizza Dettagli Presenze File</button>
             </div>

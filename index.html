@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8">
@@ -792,12 +791,18 @@
       };
 
       try {
-        const { error } = await _supabase.from('storico_presenze').insert([payloadStorico]);
-        if (error) {
-          // Fallback se l'inserimento diretto fallisce: provo a cancellare e reinserire
-          await _supabase.from('storico_presenze').delete().eq('mese', meseSel.toLowerCase()).eq('anno', annoSel);
-          const { error: errRetry } = await _supabase.from('storico_presenze').insert([payloadStorico]);
+        let { error } = await _supabase.from('storico_presenze').insert([payloadStorico]);
+
+        // Fallback: se 'data_upload' non viene trovata nello schema cache, tenta l'invio escludendola
+        if (error && error.message.includes('data_upload')) {
+          delete payloadStorico.data_upload;
+          let { error: errRetry } = await _supabase.from('storico_presenze').insert([payloadStorico]);
           if (errRetry) throw errRetry;
+        } else if (error) {
+          // In alternativa tenta prima la cancellazione di eventuali duplicati e il reinserimento
+          await _supabase.from('storico_presenze').delete().eq('mese', meseSel.toLowerCase()).eq('anno', annoSel);
+          let { error: errReinsert } = await _supabase.from('storico_presenze').insert([payloadStorico]);
+          if (errReinsert) throw errReinsert;
         }
 
         alert(`✅ File "${fileObj.name}" salvato con successo nello Storico Presenze Cloud per ${meseSel.toUpperCase()} ${annoSel}!`);
@@ -911,9 +916,12 @@
             risultati: ultimiRisultatiCalcoloPresenze
           };
 
-          // Salva/aggiorna lo storico
-          const { error: errStorico } = await _supabase.from('storico_presenze').insert([payloadStorico]);
-          if (errStorico) {
+          // Salva/aggiorna lo storico con gestione fallback
+          let { error: errStorico } = await _supabase.from('storico_presenze').insert([payloadStorico]);
+          if (errStorico && errStorico.message.includes('data_upload')) {
+            delete payloadStorico.data_upload;
+            await _supabase.from('storico_presenze').insert([payloadStorico]);
+          } else if (errStorico) {
             await _supabase.from('storico_presenze').delete().eq('mese', meseSel.toLowerCase()).eq('anno', annoSel);
             await _supabase.from('storico_presenze').insert([payloadStorico]);
           }
@@ -952,11 +960,12 @@
 
         storico.forEach((s) => {
           let jsonRisultati = JSON.stringify(s.risultati || []).replace(/'/g, "&apos;");
+          let dataCaricamentoText = s.data_upload ? ` — Caricato il ${s.data_upload}` : '';
           container.innerHTML += `
             <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
               <div>
                 <p class="font-bold text-slate-800">📅 ${String(s.mese).toUpperCase()} ${s.anno}</p>
-                <p class="text-slate-500 text-[11px]">📄 File: <span class="font-semibold text-slate-700">${s.file_name}</span> (${s.file_size}) — Caricato il ${s.data_upload}</p>
+                <p class="text-slate-500 text-[11px]">📄 File: <span class="font-semibold text-slate-700">${s.file_name || 'N/A'}</span> (${s.file_size || 'N/A'})${dataCaricamentoText}</p>
               </div>
               <button type="button" onclick='mostraDettagliStoricoObj(${jsonRisultati})' class="stBtn px-3 py-1.5 text-xs font-semibold shadow-sm hover:border-red-500">🔍 Visualizza Dettagli Presenze File</button>
             </div>
